@@ -14,7 +14,7 @@ import { pushToast } from '@/design-system/components/toast';
 import { splitBill } from '@/shared/domain/bill';
 import { formatDateTime } from '@/shared/domain/date';
 import { formatBRL, sumCents } from '@/shared/domain/money';
-import { demoSession, useDemoSession } from '@/shared/demo/session';
+import { activeServiceFor, demoSession, useDemoSession } from '@/shared/demo/session';
 import type { PaymentMethod } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
 
@@ -48,6 +48,9 @@ export function CashPage() {
   });
 
   const cash = session.cash;
+  const activeTable = session.tables.find((table) => table.id === session.activeTableId);
+  const activeService = activeServiceFor(session.services, session.activeTableId);
+  const awaitingTable = activeTable?.status === 'awaiting_bill' ? activeTable : null;
   const sales = cash?.movements.filter((item) => item.type === 'sale') ?? [];
   const salesTotal = sumCents(sales.map((item) => item.amountCents));
   const shares = splitBill(splitBase, people);
@@ -59,10 +62,18 @@ export function CashPage() {
           title="Abrir caixa"
           description="O turno fica apenas neste navegador. Nenhum valor é enviado para um adquirente."
         />
-        <Banner>
-          Demonstração local. Não informe dados de cartão — o Sabli não pede nem armazena esse tipo
-          de informação.
-        </Banner>
+        {awaitingTable ? (
+          <Banner>
+            Mesa {String(awaitingTable.number).padStart(2, '0')} aguarda pagamento demonstrativo de{' '}
+            {formatBRL(awaitingTable.billCents)}. Abra o turno para encerrar o atendimento. A mesa
+            não será liberada automaticamente.
+          </Banner>
+        ) : (
+          <Banner>
+            Demonstração local. Não informe dados de cartão — o Sabli não pede nem armazena esse
+            tipo de informação.
+          </Banner>
+        )}
         <Card>
           <CardContent>
             <form
@@ -135,6 +146,14 @@ export function CashPage() {
           </Button>
         }
       />
+      {awaitingTable ? (
+        <Banner>
+          Mesa {String(awaitingTable.number).padStart(2, '0')}
+          {activeService ? ` · ${activeService.hostName}` : ''} · conta solicitada de{' '}
+          {formatBRL(awaitingTable.billCents)}. Registrar o pagamento avulso não libera a mesa — use
+          o encerramento do atendimento.
+        </Banner>
+      ) : null}
       <section className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent>
@@ -202,6 +221,36 @@ export function CashPage() {
             >
               Registrar pagamento
             </Button>
+            {awaitingTable ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const result = demoSession.closeService(awaitingTable.id, {
+                    amountCents: awaitingTable.billCents,
+                    method,
+                    label: `Quitação demonstrativa · Mesa ${String(awaitingTable.number).padStart(2, '0')}`,
+                  });
+                  if (result.ok) {
+                    pushToast({
+                      title: `Mesa ${String(awaitingTable.number).padStart(2, '0')} encerrada`,
+                      description: 'Quitação apenas desta demonstração. Nenhum pagamento real.',
+                      tone: 'success',
+                    });
+                    return;
+                  }
+                  pushToast({
+                    title: 'Não foi possível liberar a mesa',
+                    description:
+                      result.reason === 'cash_closed'
+                        ? 'Abra o caixa para comprovar a quitação demonstrativa.'
+                        : 'Solicite a conta antes de encerrar o atendimento.',
+                    tone: 'danger',
+                  });
+                }}
+              >
+                Encerrar atendimento da mesa {String(awaitingTable.number).padStart(2, '0')}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
         <Card>

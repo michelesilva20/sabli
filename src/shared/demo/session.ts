@@ -52,6 +52,8 @@ export interface LiveTicket {
   items: TicketItem[];
 }
 
+export type TableServiceStatus = 'open' | 'awaiting_bill' | 'closed';
+
 export interface LiveTable {
   id: string;
   number: number;
@@ -63,6 +65,93 @@ export interface LiveTable {
   area: string;
   x: number;
   y: number;
+}
+
+export interface TableService {
+  id: string;
+  tableId: string;
+  status: TableServiceStatus;
+  guests: number;
+  openedAt: string;
+  requestedBillAt: string | null;
+  closedAt: string | null;
+  hostName: string;
+  seedBalanceCents: number;
+  orderIds: string[];
+}
+
+export type CloseServiceReason = 'not_found' | 'bill_required' | 'cash_closed' | 'invalid';
+export type CloseServiceResult = { ok: true } | { ok: false; reason: CloseServiceReason };
+
+export function isActiveService(service: TableService) {
+  return service.status === 'open' || service.status === 'awaiting_bill';
+}
+
+export function activeServiceFor(services: TableService[], tableId: string | null | undefined) {
+  if (!tableId) return undefined;
+  return services.find((service) => service.tableId === tableId && isActiveService(service));
+}
+
+export function ordersForService(orders: LocalOrder[], service: TableService) {
+  const lookup = new Map(orders.map((order) => [order.id, order]));
+  return service.orderIds
+    .map((id) => lookup.get(id))
+    .filter((order): order is LocalOrder => Boolean(order));
+}
+
+export function checkAccumulatedCents(service: TableService, orders: LocalOrder[]) {
+  return (
+    service.seedBalanceCents +
+    ordersForService(orders, service).reduce((sum, order) => sum + order.totalCents, 0)
+  );
+}
+
+function clampGuests(seats: number, guests: number) {
+  return Math.min(seats, Math.max(1, Math.trunc(guests) || 1));
+}
+
+function tableChannel(number: number) {
+  return `Mesa ${String(number).padStart(2, '0')}`;
+}
+
+function seedServices(tables: LiveTable[], hostName: string): TableService[] {
+  return tables
+    .filter((table) => table.status === 'occupied' || table.status === 'awaiting_bill')
+    .map((table) => ({
+      id: `svc_${table.id}`,
+      tableId: table.id,
+      status: table.status === 'awaiting_bill' ? 'awaiting_bill' : 'open',
+      guests: Math.max(1, table.guests),
+      openedAt: table.openedAt ?? new Date().toISOString(),
+      requestedBillAt:
+        table.status === 'awaiting_bill' ? (table.openedAt ?? new Date().toISOString()) : null,
+      closedAt: null,
+      hostName,
+      seedBalanceCents: table.billCents,
+      orderIds: [],
+    }));
+}
+
+function createService(input: {
+  table: LiveTable;
+  guests: number;
+  hostName: string;
+  seedBalanceCents: number;
+  openedAt?: string;
+}): TableService {
+  const openedAt = input.openedAt ?? new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    tableId: input.table.id,
+    status: 'open',
+    guests: clampGuests(input.table.seats, input.guests),
+    openedAt,
+    requestedBillAt: null,
+    closedAt: null,
+    hostName: input.hostName,
+    seedBalanceCents: input.seedBalanceCents,
+    orderIds: [],
+  };
 }
 
 export interface CashMovement {
@@ -86,6 +175,8 @@ export interface LocalOrder {
   id: string;
   number: string;
   channel: string;
+  tableId?: string;
+  serviceId?: string;
   status: CatalogOrder['status'];
   subtotalCents: number;
   discountCents: number;
@@ -107,6 +198,7 @@ export interface DemoProfile {
 
 interface DemoState {
   tables: LiveTable[];
+  services: TableService[];
   lines: OrderLine[];
   discountPercent: number;
   tickets: LiveTicket[];
@@ -122,19 +214,21 @@ interface DemoState {
 
 function createState(): DemoState {
   const now = Date.now();
+  const tables: LiveTable[] = diningTables.map((table) => ({
+    id: table.id,
+    number: table.number,
+    seats: table.seats,
+    status: table.status,
+    guests: table.guests,
+    billCents: table.billCents,
+    openedAt: table.openedMinutesAgo === null ? null : minutesAgoIso(table.openedMinutesAgo, now),
+    area: table.area,
+    x: table.x,
+    y: table.y,
+  }));
   return {
-    tables: diningTables.map((table) => ({
-      id: table.id,
-      number: table.number,
-      seats: table.seats,
-      status: table.status,
-      guests: table.guests,
-      billCents: table.billCents,
-      openedAt: table.openedMinutesAgo === null ? null : minutesAgoIso(table.openedMinutesAgo, now),
-      area: table.area,
-      x: table.x,
-      y: table.y,
-    })),
+    tables,
+    services: seedServices(tables, currentUser.name),
     lines: [],
     discountPercent: 0,
     tickets: kitchenSeeds.map((seed) => ({
@@ -330,38 +424,141 @@ export const demoSession = {
     update((current) => ({ ...current, activeTableId: tableId }));
   },
   openTable(tableId: string, guests: number) {
+    const table = state.tables.find((item) => item.id === tableId);
+    if (!table) return false;
+    if (table.status !== 'available' && table.status !== 'reserved') return false;
+    if (activeServiceFor(state.services, tableId)) return false;
+    const openedAt = new Date().toISOString();
+    const nextGuests = clampGuests(table.seats, guests);
+    const service = createService({
+      table,
+      guests: nextGuests,
+      hostName: state.profile.name,
+      seedBalanceCents: 0,
+      openedAt,
+    });
     update((current) => ({
       ...current,
       activeTableId: tableId,
-      tables: current.tables.map((table) =>
-        table.id === tableId && (table.status === 'available' || table.status === 'reserved')
+      services: [...current.services, service],
+      tables: current.tables.map((item) =>
+        item.id === tableId
           ? {
-              ...table,
+              ...item,
               status: 'occupied',
-              guests: Math.max(1, guests),
-              openedAt: new Date().toISOString(),
+              guests: nextGuests,
+              openedAt,
             }
-          : table,
+          : item,
       ),
     }));
+    return true;
   },
   requestBill(tableId: string) {
+    const table = state.tables.find((item) => item.id === tableId);
+    const service = activeServiceFor(state.services, tableId);
+    if (!table || !service || table.status !== 'occupied' || service.status !== 'open') {
+      return false;
+    }
+    const requestedBillAt = new Date().toISOString();
     update((current) => ({
       ...current,
-      tables: current.tables.map((table) =>
-        table.id === tableId && table.status === 'occupied'
-          ? { ...table, status: 'awaiting_bill' }
-          : table,
+      tables: current.tables.map((item) =>
+        item.id === tableId ? { ...item, status: 'awaiting_bill' } : item,
+      ),
+      services: current.services.map((item) =>
+        item.id === service.id ? { ...item, status: 'awaiting_bill', requestedBillAt } : item,
       ),
     }));
+    return true;
+  },
+  reopenService(tableId: string) {
+    const table = state.tables.find((item) => item.id === tableId);
+    const service = activeServiceFor(state.services, tableId);
+    if (
+      !table ||
+      !service ||
+      table.status !== 'awaiting_bill' ||
+      service.status !== 'awaiting_bill'
+    ) {
+      return false;
+    }
+    update((current) => ({
+      ...current,
+      activeTableId: tableId,
+      tables: current.tables.map((item) =>
+        item.id === tableId ? { ...item, status: 'occupied' } : item,
+      ),
+      services: current.services.map((item) =>
+        item.id === service.id ? { ...item, status: 'open' } : item,
+      ),
+    }));
+    return true;
+  },
+  closeService(
+    tableId: string,
+    payment?: { amountCents: number; method: PaymentMethod; label: string },
+  ) {
+    const table = state.tables.find((item) => item.id === tableId);
+    const service = activeServiceFor(state.services, tableId);
+    if (!table || !service) return { ok: false, reason: 'not_found' } as const;
+    if (table.status !== 'awaiting_bill' || service.status !== 'awaiting_bill') {
+      return { ok: false, reason: 'bill_required' } as const;
+    }
+    if (!state.cash) return { ok: false, reason: 'cash_closed' } as const;
+    const amountCents = payment?.amountCents ?? table.billCents;
+    const method = payment?.method ?? 'cash';
+    const label = payment?.label ?? `Quitação demonstrativa · ${tableChannel(table.number)}`;
+    const closedAt = new Date().toISOString();
+    update((current) => {
+      if (!current.cash) return current;
+      return {
+        ...current,
+        tables: current.tables.map((item) =>
+          item.id === tableId
+            ? {
+                ...item,
+                status: 'available',
+                guests: 0,
+                billCents: 0,
+                openedAt: null,
+              }
+            : item,
+        ),
+        services: current.services.map((item) =>
+          item.id === service.id ? { ...item, status: 'closed', closedAt } : item,
+        ),
+        cash:
+          amountCents > 0
+            ? {
+                ...current.cash,
+                movements: [
+                  {
+                    id: crypto.randomUUID(),
+                    type: 'sale',
+                    label,
+                    amountCents,
+                    method,
+                    at: closedAt,
+                  },
+                  ...current.cash.movements,
+                ],
+              }
+            : current.cash,
+      };
+    });
+    if (!getDemoState().cash) return { ok: false, reason: 'cash_closed' } as const;
+    const closed = getDemoState().services.find((item) => item.id === service.id);
+    if (closed?.status !== 'closed') return { ok: false, reason: 'invalid' } as const;
+    return { ok: true } as const;
   },
   sendToKitchen() {
     if (state.lines.length === 0) return null;
+    const selected = state.tables.find((item) => item.id === state.activeTableId);
+    if (selected?.status === 'awaiting_bill' || selected?.status === 'unavailable') return null;
     const totals = selectOrderTotals(state);
-    const table = state.tables.find((item) => item.id === state.activeTableId);
-    const origin = table ? `Mesa ${String(table.number).padStart(2, '0')}` : 'Balcão';
-    const number = String(state.orderSequence);
     const openedAt = new Date().toISOString();
+    const number = String(state.orderSequence);
     const items: SaleItem[] = state.lines.map((line) => ({
       lineId: line.id,
       productId: line.productId,
@@ -374,55 +571,100 @@ export const demoSession = {
       pizza: line.pizza,
       productionStatus: 'waiting',
     }));
-    const order: LocalOrder = {
-      id: crypto.randomUUID(),
-      number,
-      channel: origin,
-      status: kitchenStatusToOrderStatus('waiting'),
-      subtotalCents: totals.subtotalCents,
-      discountCents: totals.discountCents,
-      totalCents: totals.totalCents,
-      openedAt,
-      items,
-    };
-    update((current) => ({
-      ...current,
-      orderSequence: current.orderSequence + 1,
-      lines: [],
-      discountPercent: 0,
-      localOrders: [order, ...current.localOrders],
-      tickets: [
-        {
-          id: crypto.randomUUID(),
-          number,
-          origin,
-          status: 'waiting',
-          priority: 'normal',
-          createdAt: openedAt,
-          items: items.map((item) => ({
-            lineId: item.lineId ?? crypto.randomUUID(),
-            name: item.name,
-            quantity: item.quantity,
-            notes: item.notes,
-            pizza: item.pizza,
-            status: 'waiting' as const,
-          })),
-        },
-        ...current.tickets,
-      ],
-      tables: current.tables.map((item) =>
-        item.id === current.activeTableId
-          ? {
-              ...item,
-              status: item.status === 'available' ? 'occupied' : item.status,
-              guests: item.guests || 2,
-              openedAt: item.openedAt ?? openedAt,
-              billCents: item.billCents + totals.totalCents,
-            }
-          : item,
-      ),
-    }));
-    return order;
+    let origin = 'Balcão';
+    let tableId: string | undefined;
+    let serviceId: string | undefined;
+    update((current) => {
+      const table = current.tables.find((item) => item.id === current.activeTableId);
+      if (table?.status === 'awaiting_bill' || table?.status === 'unavailable') return current;
+      let tables = current.tables;
+      let services = current.services;
+      let service = activeServiceFor(services, table?.id);
+      if (table && !service && (table.status === 'available' || table.status === 'reserved')) {
+        service = createService({
+          table,
+          guests: table.guests || 2,
+          hostName: current.profile.name,
+          seedBalanceCents: 0,
+          openedAt,
+        });
+        services = [...services, service];
+        tables = tables.map((item) =>
+          item.id === table.id
+            ? { ...item, status: 'occupied', guests: service!.guests, openedAt }
+            : item,
+        );
+      }
+      if (table && !service && table.status === 'occupied') {
+        service = createService({
+          table,
+          guests: table.guests || 2,
+          hostName: current.profile.name,
+          seedBalanceCents: table.billCents,
+          openedAt: table.openedAt ?? openedAt,
+        });
+        services = [...services, service];
+      }
+      origin = table ? tableChannel(table.number) : 'Balcão';
+      tableId = table?.id;
+      serviceId = service?.id;
+      const order: LocalOrder = {
+        id: crypto.randomUUID(),
+        number,
+        channel: origin,
+        tableId,
+        serviceId,
+        status: kitchenStatusToOrderStatus('waiting'),
+        subtotalCents: totals.subtotalCents,
+        discountCents: totals.discountCents,
+        totalCents: totals.totalCents,
+        openedAt,
+        items,
+      };
+      return {
+        ...current,
+        orderSequence: current.orderSequence + 1,
+        lines: [],
+        discountPercent: 0,
+        localOrders: [order, ...current.localOrders],
+        tickets: [
+          {
+            id: crypto.randomUUID(),
+            number,
+            origin,
+            status: 'waiting',
+            priority: 'normal',
+            createdAt: openedAt,
+            items: items.map((item) => ({
+              lineId: item.lineId ?? crypto.randomUUID(),
+              name: item.name,
+              quantity: item.quantity,
+              notes: item.notes,
+              pizza: item.pizza,
+              status: 'waiting' as const,
+            })),
+          },
+          ...current.tickets,
+        ],
+        tables: tables.map((item) =>
+          item.id === table?.id
+            ? {
+                ...item,
+                status: 'occupied',
+                guests: item.guests || service?.guests || 2,
+                openedAt: item.openedAt ?? openedAt,
+                billCents: item.billCents + totals.totalCents,
+              }
+            : item,
+        ),
+        services: service
+          ? services.map((item) =>
+              item.id === service!.id ? { ...item, orderIds: [...item.orderIds, order.id] } : item,
+            )
+          : services,
+      };
+    });
+    return state.localOrders.find((order) => order.number === number) ?? null;
   },
   advanceTicket(ticketId: string) {
     const ticket = state.tickets.find((item) => item.id === ticketId);

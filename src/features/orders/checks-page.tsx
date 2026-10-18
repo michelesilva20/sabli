@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { StatusBadge } from '@/design-system/components/badge';
 import { Button } from '@/design-system/components/button';
-import { EmptyState } from '@/design-system/components/feedback';
+import { Alert, EmptyState } from '@/design-system/components/feedback';
 import { PageHeader } from '@/design-system/components/navigation';
 import { Sheet } from '@/design-system/components/sheet';
 import { pushToast } from '@/design-system/components/toast';
@@ -12,10 +12,18 @@ import {
   OrderItemComposition,
 } from '@/features/ordering/order-item-composition';
 import { useOrdersQuery } from '@/shared/api/hooks';
-import { elapsedLabel } from '@/shared/domain/date';
+import { elapsedLabel, formatDateTime } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
 import { saleItemTitle } from '@/shared/domain/order';
-import { demoSession, useDemoSession, type LiveTable } from '@/shared/demo/session';
+import {
+  activeServiceFor,
+  demoSession,
+  ordersForService,
+  useDemoSession,
+  type LiveTable,
+  type LocalOrder,
+  type TableService,
+} from '@/shared/demo/session';
 import type { CatalogOrder } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
 
@@ -49,7 +57,7 @@ export function ChecksPage() {
   const ordersQuery = useOrdersQuery();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CheckFilter>('all');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(session.activeTableId);
   const [detailOpen, setDetailOpen] = useState(false);
   const [wide, setWide] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches,
@@ -103,6 +111,13 @@ export function ChecksPage() {
   };
 
   const addItems = (table: LiveTable) => {
+    if (table.status === 'awaiting_bill') {
+      pushToast({
+        title: 'Reabra o atendimento para lançar itens',
+        tone: 'danger',
+      });
+      return;
+    }
     demoSession.selectTable(table.id);
     navigate('/pdv');
   };
@@ -113,8 +128,15 @@ export function ChecksPage() {
   };
 
   const askBill = (table: LiveTable) => {
-    demoSession.requestBill(table.id);
-    pushToast({ title: `Conta da mesa ${pad(table.number)} pedida`, tone: 'success' });
+    const asked = demoSession.requestBill(table.id);
+    if (asked) {
+      pushToast({ title: `Conta da mesa ${pad(table.number)} pedida`, tone: 'success' });
+    }
+  };
+
+  const reopen = (table: LiveTable) => {
+    const ok = demoSession.reopenService(table.id);
+    if (ok) pushToast({ title: 'Atendimento reaberto para novos itens' });
   };
 
   return (
@@ -231,10 +253,12 @@ export function ChecksPage() {
                 <CheckDetail
                   table={selected}
                   preview={latestPreview(selected.number, orders)}
-                  sessionOrders={sessionOrdersFor(selected.number, orders)}
+                  service={activeServiceFor(session.services, selected.id)}
+                  sessionOrders={sessionOrdersFor(selected, session.localOrders, session.services)}
                   onAdd={() => addItems(selected)}
                   onCash={() => goToCash(selected)}
                   onBill={() => askBill(selected)}
+                  onReopen={() => reopen(selected)}
                 />
               </section>
             </aside>
@@ -252,10 +276,12 @@ export function ChecksPage() {
           <CheckDetail
             table={selected}
             preview={latestPreview(selected.number, orders)}
-            sessionOrders={sessionOrdersFor(selected.number, orders)}
+            service={activeServiceFor(session.services, selected.id)}
+            sessionOrders={sessionOrdersFor(selected, session.localOrders, session.services)}
             onAdd={() => addItems(selected)}
             onCash={() => goToCash(selected)}
             onBill={() => askBill(selected)}
+            onReopen={() => reopen(selected)}
           />
         ) : null}
       </Sheet>
@@ -263,27 +289,35 @@ export function ChecksPage() {
   );
 }
 
-function sessionOrdersFor(number: number, orders: CatalogOrder[]) {
-  const channel = channelFor(number);
-  return orders.filter((order) => order.channel === channel && order.subtotalCents !== undefined);
+function sessionOrdersFor(table: LiveTable, orders: LocalOrder[], services: TableService[]) {
+  const service = activeServiceFor(services, table.id);
+  if (service) return ordersForService(orders, service);
+  const channel = channelFor(table.number);
+  return orders.filter((order) => order.channel === channel && order.tableId === table.id);
 }
 
 function CheckDetail({
   table,
   preview,
+  service,
   sessionOrders,
   onAdd,
   onCash,
   onBill,
+  onReopen,
 }: {
   table: LiveTable;
   preview: string | null;
-  sessionOrders: CatalogOrder[];
+  service?: TableService;
+  sessionOrders: LocalOrder[];
   onAdd: () => void;
   onCash: () => void;
   onBill: () => void;
+  onReopen: () => void;
 }) {
   const awaiting = table.status === 'awaiting_bill';
+  const seedCents = service?.seedBalanceCents ?? 0;
+  const sessionTotal = sessionOrders.reduce((sum, order) => sum + order.totalCents, 0);
   return (
     <div className="grid gap-5">
       <div className="flex items-start justify-between gap-3">
@@ -295,8 +329,14 @@ function CheckDetail({
         </div>
         <StatusBadge status={table.status} />
       </div>
+      {awaiting ? (
+        <Alert title="Conta pendente" tone="warning">
+          A solicitação não quita a mesa. O histórico de consumo permanece até o encerramento no
+          caixa.
+        </Alert>
+      ) : null}
       <div>
-        <p className="text-xs font-bold text-muted-foreground">Conta parcial</p>
+        <p className="text-xs font-bold text-muted-foreground">Total da conta</p>
         <p className="mt-1 text-3xl font-extrabold tabular-nums">{formatBRL(table.billCents)}</p>
       </div>
       <dl className="grid grid-cols-3 gap-2">
@@ -304,14 +344,40 @@ function CheckDetail({
         <Meta label="Aberta" value={table.openedAt ? elapsedLabel(table.openedAt) : 'agora'} />
         <Meta label="Lugares" value={String(table.seats)} />
       </dl>
+      {service ? (
+        <dl className="grid grid-cols-2 gap-2">
+          <Meta label="Responsável" value={service.hostName} />
+          <Meta label="Abertura" value={formatDateTime(service.openedAt)} />
+        </dl>
+      ) : null}
+      {service?.requestedBillAt ? (
+        <p className="text-xs font-semibold text-muted-foreground">
+          Conta solicitada em {formatDateTime(service.requestedBillAt)}
+          {service.status === 'open' ? ' · atendimento reaberto para novos itens' : ''}
+        </p>
+      ) : null}
+      {seedCents > 0 ? (
+        <div className="rounded-[16px] bg-muted px-3 py-3">
+          <p className="text-xs font-extrabold text-muted-foreground">
+            Saldo demonstrativo anterior
+          </p>
+          <p className="mt-1 text-sm font-bold">
+            Consumo de exemplo já registrado nesta mesa, sem itens detalhados nesta sessão.
+          </p>
+          <p className="tabular mt-2 text-base font-extrabold">{formatBRL(seedCents)}</p>
+        </div>
+      ) : null}
       {sessionOrders.length > 0 ? (
         <div className="grid gap-3">
           <div>
-            <p className="text-xs font-extrabold text-muted-foreground">Pedidos desta sessão</p>
-            <p className="mt-1 text-xs font-semibold text-muted-foreground">
-              A conta parcial também inclui o consumo de exemplo já registrado na mesa. Esses
-              pedidos não substituem esse saldo.
+            <p className="text-xs font-extrabold text-muted-foreground">
+              Pedidos deste atendimento
             </p>
+            {seedCents > 0 ? (
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                Os novos pedidos somam ao saldo anterior. A conta não duplica itens.
+              </p>
+            ) : null}
           </div>
           {sessionOrders.map((order) => (
             <div key={order.id} className="grid gap-2 rounded-[16px] bg-muted px-3 py-3">
@@ -324,17 +390,19 @@ function CheckDetail({
                   </li>
                 ))}
               </ul>
-              {order.subtotalCents !== undefined ? (
-                <OrderAmountBreakdown
-                  subtotalCents={order.subtotalCents}
-                  discountCents={order.discountCents ?? 0}
-                  totalCents={order.totalCents}
-                />
-              ) : null}
+              <OrderAmountBreakdown
+                subtotalCents={order.subtotalCents}
+                discountCents={order.discountCents}
+                totalCents={order.totalCents}
+              />
             </div>
           ))}
+          <div className="flex justify-between text-sm font-bold">
+            <span>Pedidos desta sessão</span>
+            <span className="tabular">{formatBRL(sessionTotal)}</span>
+          </div>
         </div>
-      ) : preview ? (
+      ) : preview && seedCents === 0 ? (
         <div className="rounded-[16px] bg-muted px-3 py-3">
           <p className="text-xs font-extrabold text-muted-foreground">Último pedido</p>
           <p className="mt-1 text-sm font-bold">{preview}</p>
@@ -342,13 +410,24 @@ function CheckDetail({
       ) : null}
       <div className="grid gap-2">
         {awaiting ? (
-          <Button onClick={onCash}>Ir para o caixa</Button>
+          <>
+            <Button onClick={onCash}>Ir para o caixa</Button>
+            <Button variant="secondary" onClick={onReopen}>
+              Reabrir atendimento
+            </Button>
+          </>
         ) : (
           <Button onClick={onBill}>Pedir conta</Button>
         )}
-        <Button variant="outline" onClick={onAdd}>
-          Adicionar itens
-        </Button>
+        {awaiting ? (
+          <p className="text-xs font-semibold text-muted-foreground">
+            Adicionar itens fica bloqueado enquanto a conta estiver solicitada.
+          </p>
+        ) : (
+          <Button variant="outline" onClick={onAdd}>
+            Adicionar itens
+          </Button>
+        )}
         {awaiting ? null : (
           <Button variant="ghost" onClick={onCash}>
             Ir para o caixa

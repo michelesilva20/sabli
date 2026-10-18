@@ -4,7 +4,13 @@ import { CatalogProductsState } from '@/features/catalog/catalog-products-state'
 import { ProductCatalogCard, ProductCategoryTabs } from '@/features/catalog/product-card';
 import { OrderSummary } from '@/features/ordering/order-summary';
 import { useCatalogQuery } from '@/shared/api/hooks';
-import { demoSession, selectOrderTotals, useDemoSession } from '@/shared/demo/session';
+import {
+  activeServiceFor,
+  demoSession,
+  selectOrderTotals,
+  useDemoSession,
+} from '@/shared/demo/session';
+import { Alert } from '@/design-system/components/feedback';
 import { formatBRL } from '@/shared/domain/money';
 import { Button } from '@/design-system/components/button';
 import { SearchInput } from '@/design-system/components/input';
@@ -29,18 +35,31 @@ export function PosPage() {
     });
   }, [catalog.data?.products, category, search]);
   const activeTable = session.tables.find((table) => table.id === session.activeTableId);
+  const activeService = activeServiceFor(session.services, session.activeTableId);
+  const billRequested = activeTable?.status === 'awaiting_bill';
   const totals = selectOrderTotals(session);
   const itemCount = session.lines.reduce((total, line) => total + line.quantity, 0);
+  const tableLabel = activeTable ? `Mesa ${String(activeTable.number).padStart(2, '0')}` : 'Balcão';
 
   function sendOrder() {
+    if (billRequested) {
+      pushToast({
+        title: 'Reabra o atendimento para enviar itens',
+        tone: 'danger',
+      });
+      return;
+    }
     const order = demoSession.sendToKitchen();
     if (!order) return;
     setOrderOpen(false);
     pushToast({
       title: `Pedido #${order.number} enviado`,
-      description: 'Demonstração local. A cozinha desta sessão foi atualizada, sem servidor.',
+      description: activeTable
+        ? `${tableLabel} · a cozinha desta sessão foi atualizada, sem servidor.`
+        : 'Demonstração local. A cozinha desta sessão foi atualizada, sem servidor.',
       tone: 'success',
     });
+    if (activeTable) navigate('/comandas');
   }
 
   return (
@@ -49,7 +68,9 @@ export function PosPage() {
         title="Novo pedido"
         description={
           activeTable
-            ? `Mesa ${String(activeTable.number).padStart(2, '0')} · atendimento demonstrativo`
+            ? `${tableLabel} · ${activeTable.guests || activeService?.guests || 0} ${
+                (activeTable.guests || activeService?.guests || 0) === 1 ? 'pessoa' : 'pessoas'
+              } · atendimento ativo`
             : 'Balcão · selecione uma mesa no mapa se quiser vincular a conta'
         }
         actions={
@@ -58,6 +79,17 @@ export function PosPage() {
           </Button>
         }
       />
+      {activeTable ? (
+        <Alert title={`Pedido vinculado à ${tableLabel}`}>
+          Os itens entram na comanda desta mesa. O rascunho permanece se você for ao montador de
+          pizza.
+        </Alert>
+      ) : null}
+      {billRequested ? (
+        <Alert title="Conta solicitada nesta mesa" tone="warning">
+          Enviar à cozinha fica bloqueado até reabrir o atendimento.
+        </Alert>
+      ) : null}
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
         <div className="grid gap-4">
           <SearchInput

@@ -1,14 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Banner } from '@/design-system/components/feedback';
+import { Alert, Banner } from '@/design-system/components/feedback';
 import { Button } from '@/design-system/components/button';
 import { Dialog } from '@/design-system/components/dialog';
 import { NumberInput } from '@/design-system/components/number-input';
 import { PageHeader, SegmentedControl } from '@/design-system/components/navigation';
 import { Sheet } from '@/design-system/components/sheet';
 import { StatusBadge } from '@/design-system/components/badge';
-import { demoSession, useDemoSession, type LiveTable } from '@/shared/demo/session';
-import { elapsedLabel } from '@/shared/domain/date';
+import { pushToast } from '@/design-system/components/toast';
+import {
+  activeServiceFor,
+  demoSession,
+  useDemoSession,
+  type LiveTable,
+} from '@/shared/demo/session';
+import { elapsedLabel, formatDateTime } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
 import type { TableStatus } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
@@ -155,6 +161,7 @@ export function DiningPage() {
   const [selectedId, setSelectedId] = useState<string | null>(session.activeTableId);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [guests, setGuests] = useState(2);
+  const [cashBlock, setCashBlock] = useState(false);
   const tables = useMemo(
     () => session.tables.filter((table) => filter === 'all' || table.status === filter),
     [filter, session.tables],
@@ -164,6 +171,7 @@ export function DiningPage() {
   ).length;
   const openBill = session.tables.reduce((sum, table) => sum + table.billCents, 0);
   const selected = session.tables.find((table) => table.id === selectedId) ?? null;
+  const selectedService = activeServiceFor(session.services, selected?.id);
 
   return (
     <div className="grid gap-5">
@@ -254,6 +262,7 @@ export function DiningPage() {
                 dimmed={filter !== 'all' && table.status !== filter}
                 onSelect={() => {
                   setSelectedId(table.id);
+                  setCashBlock(false);
                   demoSession.selectTable(table.id);
                 }}
               />
@@ -268,6 +277,7 @@ export function DiningPage() {
                 type="button"
                 onClick={() => {
                   setSelectedId(table.id);
+                  setCashBlock(false);
                   demoSession.selectTable(table.id);
                 }}
                 className={cn(
@@ -311,6 +321,28 @@ export function DiningPage() {
         {selected ? (
           <div className="grid gap-4">
             <StatusBadge status={selected.status} />
+            {selected.status === 'unavailable' ? (
+              <Alert title="Mesa indisponível" tone="warning">
+                Esta mesa não pode ser aberta sem uma transição operacional válida.
+              </Alert>
+            ) : null}
+            {selected.status === 'reserved' ? (
+              <Alert title="Mesa reservada">
+                Abrir o atendimento ocupa a reserva de forma explícita nesta demonstração.
+              </Alert>
+            ) : null}
+            {selected.status === 'awaiting_bill' ? (
+              <Alert title="Conta solicitada" tone="warning">
+                A mesa aguarda pagamento. Novos itens exigem reabrir o atendimento. Encerrar no
+                caixa não quita sozinho — só libera a mesa com o turno aberto.
+              </Alert>
+            ) : null}
+            {cashBlock ? (
+              <Alert title="Caixa fechado" tone="warning">
+                A quitação demonstrativa exige o caixa aberto. A mesa permanece ocupada até o
+                encerramento válido.
+              </Alert>
+            ) : null}
             <dl className="grid gap-2 text-sm">
               <div className="flex justify-between">
                 <dt>Lugares</dt>
@@ -328,6 +360,24 @@ export function DiningPage() {
                 <dt>Tempo</dt>
                 <dd>{selected.openedAt ? elapsedLabel(selected.openedAt) : '—'}</dd>
               </div>
+              {selectedService ? (
+                <>
+                  <div className="flex justify-between">
+                    <dt>Abertura</dt>
+                    <dd>{formatDateTime(selectedService.openedAt)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt>Responsável</dt>
+                    <dd className="font-bold">{selectedService.hostName}</dd>
+                  </div>
+                </>
+              ) : null}
+              {selectedService?.requestedBillAt ? (
+                <div className="flex justify-between">
+                  <dt>Conta pedida</dt>
+                  <dd>{formatDateTime(selectedService.requestedBillAt)}</dd>
+                </div>
+              ) : null}
             </dl>
             {(selected.status === 'available' || selected.status === 'reserved') && (
               <label className="grid gap-1 text-sm font-bold">
@@ -344,7 +394,15 @@ export function DiningPage() {
               {(selected.status === 'available' || selected.status === 'reserved') && (
                 <Button
                   onClick={() => {
-                    demoSession.openTable(selected.id, guests);
+                    const opened = demoSession.openTable(selected.id, guests);
+                    if (!opened) {
+                      pushToast({
+                        title: 'Atendimento já ativo nesta mesa',
+                        tone: 'danger',
+                      });
+                      return;
+                    }
+                    setCashBlock(false);
                     navigate('/pdv');
                   }}
                 >
@@ -352,19 +410,82 @@ export function DiningPage() {
                 </Button>
               )}
               {selected.status === 'occupied' ? (
-                <Button variant="secondary" onClick={() => demoSession.requestBill(selected.id)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const asked = demoSession.requestBill(selected.id);
+                    if (asked) {
+                      pushToast({
+                        title: `Conta da mesa ${String(selected.number).padStart(2, '0')} pedida`,
+                        tone: 'success',
+                      });
+                    }
+                  }}
+                >
                   Pedir conta
                 </Button>
               ) : null}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  demoSession.selectTable(selected.id);
-                  navigate('/pdv');
-                }}
-              >
-                Lançar pedido
-              </Button>
+              {selected.status === 'awaiting_bill' ? (
+                <Button
+                  onClick={() => {
+                    demoSession.reopenService(selected.id);
+                    pushToast({ title: 'Atendimento reaberto para novos itens' });
+                  }}
+                >
+                  Reabrir atendimento
+                </Button>
+              ) : null}
+              {selected.status === 'occupied' ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    demoSession.selectTable(selected.id);
+                    navigate('/pdv');
+                  }}
+                >
+                  Adicionar itens
+                </Button>
+              ) : null}
+              {selected.status === 'awaiting_bill' ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      demoSession.selectTable(selected.id);
+                      navigate('/caixa');
+                    }}
+                  >
+                    Ir para o caixa
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const result = demoSession.closeService(selected.id);
+                      if (result.ok) {
+                        setCashBlock(false);
+                        setSelectedId(null);
+                        pushToast({
+                          title: `Mesa ${String(selected.number).padStart(2, '0')} liberada`,
+                          tone: 'success',
+                        });
+                        return;
+                      }
+                      if (result.reason === 'cash_closed') {
+                        setCashBlock(true);
+                        return;
+                      }
+                      pushToast({
+                        title: 'Encerramento bloqueado',
+                        description:
+                          'Peça a conta e quite no caixa demonstrativo antes de liberar.',
+                        tone: 'danger',
+                      });
+                    }}
+                  >
+                    Encerrar atendimento
+                  </Button>
+                </>
+              ) : null}
               <Button variant="ghost" onClick={() => navigate('/comandas')}>
                 Ver comandas
               </Button>

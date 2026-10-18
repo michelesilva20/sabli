@@ -13,7 +13,7 @@ import {
   type PricingStrategy,
 } from '@/shared/domain/pizza';
 import { formatBRL } from '@/shared/domain/money';
-import { demoSession } from '@/shared/demo/session';
+import { demoSession, useDemoSession } from '@/shared/demo/session';
 import { PizzaBuildSummary } from '@/features/pizza-builder/pizza-build-summary';
 import { Breadcrumb } from '@/design-system/components/navigation';
 import { Button } from '@/design-system/components/button';
@@ -504,13 +504,18 @@ export function PizzaBuilder({
 }
 
 export function PizzaBuilderPage() {
+  const session = useDemoSession();
+  const activeTable = session.tables.find((table) => table.id === session.activeTableId);
+  const tableLabel = activeTable ? `Mesa ${String(activeTable.number).padStart(2, '0')}` : null;
   return (
     <div className="grid gap-4">
       <Breadcrumb items={[{ label: 'PDV', to: '/pdv' }, { label: 'Montar pizza' }]} />
       <div>
         <h1 className="text-2xl font-extrabold">Montar pizza</h1>
         <p className="text-sm text-muted-foreground">
-          Escolha tamanho, sabores, borda e adicionais.
+          {tableLabel
+            ? `${tableLabel} · o rascunho do PDV permanece ao voltar.`
+            : 'Escolha tamanho, sabores, borda e adicionais.'}
         </p>
       </div>
       <PizzaBuilder />

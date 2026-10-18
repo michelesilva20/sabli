@@ -101,17 +101,29 @@ export function WaiterTablePage() {
           />
         </div>
       ) : null}
-      <Button
-        size="lg"
-        onClick={() => {
-          if (table.status === 'available' || table.status === 'reserved')
-            demoSession.openTable(table.id, guests);
-          else demoSession.selectTable(table.id);
-          navigate('/atendimento/cardapio');
-        }}
-      >
-        Lançar itens
-      </Button>
+      {table.status === 'awaiting_bill' ? (
+        <Button
+          size="lg"
+          onClick={() => {
+            demoSession.reopenService(table.id);
+            navigate('/atendimento/cardapio');
+          }}
+        >
+          Reabrir e lançar itens
+        </Button>
+      ) : (
+        <Button
+          size="lg"
+          onClick={() => {
+            if (table.status === 'available' || table.status === 'reserved')
+              demoSession.openTable(table.id, guests);
+            else demoSession.selectTable(table.id);
+            navigate('/atendimento/cardapio');
+          }}
+        >
+          Lançar itens
+        </Button>
+      )}
       <Button size="lg" variant="outline" onClick={() => navigate('/atendimento/comanda')}>
         Ver comanda
       </Button>
