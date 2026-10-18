@@ -22,7 +22,8 @@ A sessão em `src/shared/demo/session.ts` concentra o que a API deverá validar:
 - avançar ticket de preparo;
 - disponibilidade de produto;
 - abrir caixa, lançar movimento, registrar pagamento e fechar turno;
-- inclusão de pessoa da equipe.
+- inclusão de pessoa da equipe;
+- atualização do perfil da conta demonstrativa.
 
 Essas operações precisarão de comandos idempotentes, conferência de estoque, regra de preço e autorização no servidor. O frontend não deve ser tratado como fonte da verdade.
 

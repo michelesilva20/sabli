@@ -10,6 +10,7 @@ import { DiningPage } from '@/features/dining/dining-page';
 import { PosPage } from '@/features/pos/pos-page';
 import { KitchenPage } from '@/features/kitchen/kitchen-page';
 import { CashPage } from '@/features/cash/cash-page';
+import { ProfilePage } from '@/features/settings/profile-page';
 function renderInRouter(ui: ReactElement): RenderResult {
   return render(
     <AppProviders>
@@ -27,7 +28,8 @@ describe('navegação', () => {
         <RouterProvider router={router} />
       </AppProviders>,
     );
-    expect(await screen.findByRole('heading', { name: /mariana/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Início' })).toBeInTheDocument();
+    expect(screen.getByText(/mariana\./i)).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Mesas' }));
     expect(await screen.findByRole('heading', { name: 'Mapa de mesas' })).toBeInTheDocument();
   });
@@ -65,6 +67,18 @@ describe('kds', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Iniciar preparo' }).length).toBe(1);
     });
+  });
+});
+
+describe('perfil', () => {
+  it('salva o nome só nesta sessão', async () => {
+    const user = userEvent.setup();
+    renderInRouter(<ProfilePage />);
+    const name = await screen.findByLabelText(/nome/i);
+    await user.clear(name);
+    await user.type(name, 'Mariana Costa');
+    await user.click(screen.getByRole('button', { name: 'Salvar nesta sessão' }));
+    expect(screen.getByRole('heading', { name: 'Mariana Costa' })).toBeInTheDocument();
   });
 });
 

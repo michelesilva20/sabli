@@ -5,7 +5,7 @@ import { useUiStore } from '@/app/stores/ui-store';
 import { SabliLogo } from '@/design-system/icons/logo';
 import { Avatar } from '@/design-system/components/media';
 import { Tooltip } from '@/design-system/components/overlays';
-import { currentUser } from '@/shared/mocks/fixtures';
+import { useDemoSession } from '@/shared/demo/session';
 import { cn } from '@/shared/utils/cn';
 
 function Item({
@@ -72,6 +72,7 @@ export function SidebarNav({
 export function Sidebar() {
   const collapsed = useUiStore((state) => state.sidebarCollapsed);
   const toggle = useUiStore((state) => state.toggleSidebar);
+  const profile = useDemoSession().profile;
   return (
     <aside
       className={cn(
@@ -86,17 +87,26 @@ export function Sidebar() {
         <SidebarNav collapsed={collapsed} />
       </div>
       <div className="grid gap-2 border-t border-border p-3">
-        <div className={cn('flex items-center gap-2 px-1', collapsed && 'justify-center px-0')}>
-          <Avatar initials={currentUser.initials} label={currentUser.name} className="size-9" />
-          {collapsed ? null : (
+        <NavLink
+          to="/perfil"
+          title={collapsed ? 'Perfil' : undefined}
+          className={cn(
+            'flex items-center gap-2 rounded-[14px] px-1 py-1 hover:bg-muted',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <Avatar initials={profile.initials} label={profile.name} className="size-9" />
+          {collapsed ? (
+            <span className="sr-only">Perfil</span>
+          ) : (
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-extrabold">{currentUser.firstName}</span>
+              <span className="block truncate text-sm font-extrabold">{profile.firstName}</span>
               <span className="block truncate text-xs font-semibold text-muted-foreground">
-                {currentUser.role}
+                {profile.role}
               </span>
             </span>
           )}
-        </div>
+        </NavLink>
         <button
           type="button"
           onClick={toggle}

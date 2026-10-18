@@ -18,7 +18,6 @@ import { useDashboardQuery } from '@/shared/api/hooks';
 import { elapsedLabel, formatLongDate, greetingFor } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
 import { useDemoSession } from '@/shared/demo/session';
-import { currentUser } from '@/shared/mocks/fixtures';
 import { PERIOD_OPTIONS } from '@/shared/mocks/fixtures';
 import type { DashboardPeriod } from '@/shared/types/domain';
 
@@ -63,7 +62,7 @@ export function DashboardPage() {
     <div className="grid gap-4">
       <PageHeader
         title="Início"
-        description={`${greeting}, ${currentUser.firstName}. Resumo da operação ${period === 'today' ? 'de hoje' : periodLabel.toLowerCase()}, ${formatLongDate()}.`}
+        description={`${greeting}, ${session.profile.firstName}. Resumo da operação ${period === 'today' ? 'de hoje' : periodLabel.toLowerCase()}, ${formatLongDate()}.`}
         actions={
           <div className="relative w-full sm:w-36">
             <CalendarDays

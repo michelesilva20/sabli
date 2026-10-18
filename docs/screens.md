@@ -16,6 +16,7 @@ Nada nesta lista persiste em servidor. Onde uma ação muda a tela, a mudança v
 | `/relatorios`       | Relatórios    | Mesma base ilustrativa do painel, com aviso de que não é fechamento.                                                                                  |
 | `/equipe`           | Equipe        | Lista de exemplo e inclusão local, sem convite.                                                                                                       |
 | `/configuracoes`    | Configurações | Tema, módulos visíveis e telefone que não é gravado.                                                                                                  |
+| `/perfil`           | Perfil        | Dados da conta demonstrativa. Nome, e-mail, telefone e turno valem só nesta sessão.                                                                   |
 | `/atendimento/*`    | Garçom        | Navegação inferior: mesas, cardápio, pedido e conta. Inclui detalhe, comanda, montador e revisão.                                                     |
 | `/design-system`    | Sabli UI      | Inspeção interna. Só existe no `dev`.                                                                                                                 |
 

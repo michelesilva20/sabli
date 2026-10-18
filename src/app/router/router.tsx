@@ -15,6 +15,7 @@ import { OrdersPage } from '@/features/orders/orders-page';
 import { PizzaBuilderPage } from '@/features/pizza-builder/pizza-builder';
 import { PosPage } from '@/features/pos/pos-page';
 import { ReportsPage } from '@/features/reports/reports-page';
+import { ProfilePage } from '@/features/settings/profile-page';
 import { SettingsPage } from '@/features/settings/settings-page';
 import { TeamPage } from '@/features/settings/team-page';
 import {
@@ -126,6 +127,7 @@ export function createAppRoutes() {
             </ModuleGate>
           ),
         },
+        { path: 'perfil', element: <ProfilePage /> },
         ...designSystemRoute,
         { path: '*', element: <NotFoundPage /> },
       ],

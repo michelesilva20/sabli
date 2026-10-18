@@ -30,6 +30,9 @@ export const currentUser = {
   firstName: 'Mariana',
   role: 'Gerente',
   initials: 'MA',
+  email: 'mariana.alves@pizzariadocentro.com',
+  phone: '(11) 98821-4400',
+  shift: 'Tarde',
 };
 
 export const establishments: Establishment[] = [

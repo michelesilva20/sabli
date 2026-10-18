@@ -6,7 +6,6 @@ import { SidebarNav } from '@/app/layouts/sidebar';
 import { useUiStore } from '@/app/stores/ui-store';
 import { useCatalogQuery, useEstablishmentsQuery, useNotificationsQuery } from '@/shared/api/hooks';
 import { demoSession, resetDemoSession, useDemoSession } from '@/shared/demo/session';
-import { currentUser } from '@/shared/mocks/fixtures';
 import { Avatar } from '@/design-system/components/media';
 import { DropdownMenu } from '@/design-system/components/overlays';
 import { SearchInput } from '@/design-system/components/input';
@@ -32,9 +31,17 @@ export function AppHeader() {
   const results = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (term.length < 2) return [];
-    const pages = businessNavigation
+    const pages = [
+      { id: 'profile', label: 'Perfil', to: '/perfil', hint: 'Conta' },
+      ...businessNavigation.map((item) => ({
+        id: item.id,
+        label: item.label,
+        hint: 'Módulo',
+        to: item.to,
+      })),
+    ]
       .filter((item) => item.label.toLowerCase().includes(term))
-      .map((item) => ({ id: item.id, label: item.label, hint: 'Módulo', to: item.to }));
+      .map((item) => ({ id: item.id, label: item.label, hint: item.hint, to: item.to }));
     const products = (catalog.data?.products ?? [])
       .filter((product) => product.name.toLowerCase().includes(term))
       .slice(0, 5)
@@ -192,16 +199,21 @@ export function AppHeader() {
               type="button"
               className="flex h-10 items-center gap-2 rounded-full pr-2 pl-1 hover:bg-muted"
             >
-              <Avatar initials={currentUser.initials} label={currentUser.name} className="size-9" />
+              <Avatar
+                initials={session.profile.initials}
+                label={session.profile.name}
+                className="size-9"
+              />
               <span className="hidden text-left leading-tight sm:grid">
-                <span className="text-sm font-extrabold">Olá, {currentUser.firstName}</span>
+                <span className="text-sm font-extrabold">Olá, {session.profile.firstName}</span>
                 <span className="text-[11px] font-semibold text-muted-foreground">
-                  {currentUser.role}
+                  {session.profile.role}
                 </span>
               </span>
             </button>
           }
           items={[
+            { id: 'profile', label: 'Meu perfil', onSelect: () => navigate('/perfil') },
             {
               id: 'waiter',
               label: 'Atendimento do garçom',

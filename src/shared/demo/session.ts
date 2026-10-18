@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { nextKitchenStatus, type KitchenStatus } from '@/shared/domain/kitchen';
 import { orderDiscountCents, orderSubtotalCents, orderTotalCents } from '@/shared/domain/order';
 import { minutesAgoIso } from '@/shared/domain/date';
-import { diningTables, kitchenSeeds, products, staff } from '@/shared/mocks/fixtures';
+import { currentUser, diningTables, kitchenSeeds, products, staff } from '@/shared/mocks/fixtures';
 import type { PaymentMethod, StaffMember } from '@/shared/types/domain';
 
 export interface OrderLine {
@@ -64,6 +64,17 @@ export interface LocalOrder {
   items: { name: string; quantity: number; totalCents: number }[];
 }
 
+export interface DemoProfile {
+  id: string;
+  name: string;
+  firstName: string;
+  role: string;
+  initials: string;
+  email: string;
+  phone: string;
+  shift: string;
+}
+
 interface DemoState {
   tables: LiveTable[];
   lines: OrderLine[];
@@ -76,6 +87,7 @@ interface DemoState {
   extraStaff: StaffMember[];
   readNotificationIds: string[];
   orderSequence: number;
+  profile: DemoProfile;
 }
 
 function createState(): DemoState {
@@ -111,6 +123,7 @@ function createState(): DemoState {
     extraStaff: [],
     readNotificationIds: [],
     orderSequence: 1049,
+    profile: { ...currentUser },
   };
 }
 
@@ -409,6 +422,26 @@ export const demoSession = {
   },
   addStaff(member: StaffMember) {
     update((current) => ({ ...current, extraStaff: [...current.extraStaff, member] }));
+  },
+  updateProfile(input: { name: string; email: string; phone: string; shift: string }) {
+    const parts = input.name.trim().split(/\s+/).filter(Boolean);
+    const firstName = parts[0] ?? input.name.trim();
+    const initials = parts
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('');
+    update((current) => ({
+      ...current,
+      profile: {
+        ...current.profile,
+        name: input.name.trim(),
+        firstName,
+        initials,
+        email: input.email.trim(),
+        phone: input.phone.trim(),
+        shift: input.shift,
+      },
+    }));
   },
   markNotificationRead(id: string) {
     update((current) => ({
