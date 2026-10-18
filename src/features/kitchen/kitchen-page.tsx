@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { KITCHEN_ACTION_LABEL, KITCHEN_FLOW, KITCHEN_STATUS_LABEL } from '@/shared/domain/kitchen';
+import { Button } from '@/design-system/components/button';
+import { Badge } from '@/design-system/components/badge';
+import {
+  KITCHEN_ACTION_LABEL,
+  KITCHEN_FLOW,
+  KITCHEN_ITEM_STATUS_LABEL,
+  KITCHEN_STATUS_LABEL,
+  itemKitchenStatus,
+} from '@/shared/domain/kitchen';
 import { elapsedLabel, elapsedMinutes } from '@/shared/domain/date';
 import { OrderItemComposition } from '@/features/ordering/order-item-composition';
 import { demoSession, useDemoSession, type LiveTicket } from '@/shared/demo/session';
@@ -74,21 +82,40 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
         </div>
       </header>
       <ul className="mt-4 grid gap-2.5 pl-2">
-        {ticket.items.map((item) => (
-          <li key={item.lineId} className="flex items-start gap-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-muted text-sm font-extrabold">
-              {item.quantity}
-            </span>
-            <span className="min-w-0 pt-0.5">
-              <OrderItemComposition
-                name={item.name}
-                notes={item.notes}
-                pizza={item.pizza}
-                nameClassName="text-[15px] leading-snug"
-              />
-            </span>
-          </li>
-        ))}
+        {ticket.items.map((item) => {
+          const itemStatus = itemKitchenStatus(item, ticket.status);
+          const itemAction = KITCHEN_ACTION_LABEL[itemStatus];
+          return (
+            <li key={item.lineId} className="flex items-start gap-3">
+              <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-muted text-sm font-extrabold">
+                {item.quantity}
+              </span>
+              <span className="min-w-0 flex-1 pt-0.5">
+                <OrderItemComposition
+                  name={item.name}
+                  notes={item.notes}
+                  pizza={item.pizza}
+                  nameClassName="text-[15px] leading-snug"
+                />
+                <span className="mt-1 flex flex-wrap items-center gap-2">
+                  <Badge tone="neutral">{KITCHEN_ITEM_STATUS_LABEL[itemStatus]}</Badge>
+                  {itemAction ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2.5 text-xs"
+                      aria-label={`Avançar ${item.name}`}
+                      onClick={() => demoSession.advanceTicketItem(ticket.id, item.lineId)}
+                    >
+                      {itemAction}
+                    </Button>
+                  ) : null}
+                </span>
+              </span>
+            </li>
+          );
+        })}
       </ul>
       {action ? (
         <button

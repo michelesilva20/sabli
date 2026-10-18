@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { splitBill } from '@/shared/domain/bill';
 import { formatBRL, percentOfCents } from '@/shared/domain/money';
 import { orderDiscountCents, orderTotalCents } from '@/shared/domain/order';
-import { nextKitchenStatus } from '@/shared/domain/kitchen';
+import {
+  aggregateKitchenStatus,
+  applyKitchenTransition,
+  kitchenStatusToOrderStatus,
+  nextKitchenStatus,
+} from '@/shared/domain/kitchen';
 import { calculatePizzaPrice, canAddFlavor, equalPortions, sizeById } from '@/shared/domain/pizza';
 
 describe('dinheiro', () => {
@@ -92,5 +97,23 @@ describe('cozinha', () => {
     expect(nextKitchenStatus('preparing')).toBe('ready');
     expect(nextKitchenStatus('ready')).toBe('delivered');
     expect(nextKitchenStatus('delivered')).toBeNull();
+  });
+
+  it('bloqueia transições que pulam ou voltam etapa', () => {
+    expect(applyKitchenTransition('waiting', 'ready')).toBeNull();
+    expect(applyKitchenTransition('preparing', 'waiting')).toBeNull();
+    expect(applyKitchenTransition('delivered', 'ready')).toBeNull();
+    expect(applyKitchenTransition('waiting', 'preparing')).toBe('preparing');
+  });
+
+  it('agrega o status do pedido a partir dos itens', () => {
+    expect(aggregateKitchenStatus(['waiting', 'waiting'])).toBe('waiting');
+    expect(kitchenStatusToOrderStatus('waiting')).toBe('aberto');
+    expect(aggregateKitchenStatus(['waiting', 'preparing'])).toBe('preparing');
+    expect(kitchenStatusToOrderStatus('preparing')).toBe('em preparo');
+    expect(aggregateKitchenStatus(['ready', 'delivered'])).toBe('ready');
+    expect(kitchenStatusToOrderStatus('ready')).toBe('pronto');
+    expect(aggregateKitchenStatus(['delivered', 'delivered'])).toBe('delivered');
+    expect(kitchenStatusToOrderStatus('delivered')).toBe('entregue');
   });
 });

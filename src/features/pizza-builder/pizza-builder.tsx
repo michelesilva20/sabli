@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { usePizzaOptionsQuery } from '@/shared/api/hooks';
 import {
@@ -49,6 +49,7 @@ export function PizzaBuilder({
   const [strategy, setStrategy] = useState<PricingStrategy>('highest');
   const [step, setStep] = useState<StepId>('tamanho');
   const [added, setAdded] = useState(false);
+  const addingRef = useRef(false);
 
   const size = sizeById(sizeId);
   const steps = useMemo(() => {
@@ -93,6 +94,7 @@ export function PizzaBuilder({
   }
 
   function addToOrder() {
+    if (addingRef.current || added) return;
     if (!price) return;
     const crust = crusts.find((item) => item.id === crustId);
     if (!crust) return;
@@ -109,30 +111,35 @@ export function PizzaBuilder({
       ];
     });
     if (selectedFlavors.length !== portions.length) return;
+    addingRef.current = true;
     const selectedExtras = extras.filter((extra) => extraIds.includes(extra.id));
-    demoSession.addConfiguredItem({
-      name: `Pizza ${size.name.toLowerCase()}`,
-      unitPriceCents: price.totalCents,
-      notes: notes.trim() || undefined,
-      pizza: {
-        sizeId: size.id,
-        sizeName: size.name,
-        flavors: selectedFlavors,
-        crust: { id: crust.id, name: crust.name, priceCents: crust.priceCents },
-        extras: selectedExtras.map((extra) => ({
-          id: extra.id,
-          name: extra.name,
-          priceCents: extra.priceCents,
-        })),
-      },
-    });
-    setAdded(true);
-    pushToast({
-      title: 'Pizza adicionada ao pedido',
-      description:
-        'O valor usa a regra demonstrativa escolhida. A API Java definirá o preço final.',
-      tone: 'success',
-    });
+    try {
+      demoSession.addConfiguredItem({
+        name: `Pizza ${size.name.toLowerCase()}`,
+        unitPriceCents: price.totalCents,
+        notes: notes.trim() || undefined,
+        pizza: {
+          sizeId: size.id,
+          sizeName: size.name,
+          flavors: selectedFlavors,
+          crust: { id: crust.id, name: crust.name, priceCents: crust.priceCents },
+          extras: selectedExtras.map((extra) => ({
+            id: extra.id,
+            name: extra.name,
+            priceCents: extra.priceCents,
+          })),
+        },
+      });
+      setAdded(true);
+      pushToast({
+        title: 'Pizza adicionada ao pedido',
+        description:
+          'O valor usa a regra demonstrativa escolhida. A API Java definirá o preço final.',
+        tone: 'success',
+      });
+    } catch {
+      addingRef.current = false;
+    }
   }
 
   if (options.isLoading) return <Skeleton className="h-80" />;
@@ -149,6 +156,7 @@ export function PizzaBuilder({
           <Button
             variant="outline"
             onClick={() => {
+              addingRef.current = false;
               setAdded(false);
               setFlavorIds([]);
               setStep('tamanho');
@@ -356,7 +364,7 @@ export function PizzaBuilder({
             Voltar
           </Button>
           {step === 'revisao' ? (
-            <Button disabled={!price} onClick={addToOrder}>
+            <Button disabled={!price || added} onClick={addToOrder}>
               Adicionar ao pedido
             </Button>
           ) : (

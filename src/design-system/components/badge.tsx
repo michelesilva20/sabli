@@ -53,7 +53,7 @@ const statusLabels: Record<string, string> = {
   awaiting_bill: 'Aguardando conta',
   reserved: 'Reservada',
   unavailable: 'Indisponível',
-  aberto: 'Aberto',
+  aberto: 'Aguardando',
   'em preparo': 'Em preparo',
   pronto: 'Pronto',
   entregue: 'Entregue',

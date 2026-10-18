@@ -153,6 +153,7 @@ export interface SaleItem {
   totalCents: number;
   notes?: string;
   pizza?: PizzaComposition;
+  productionStatus?: 'waiting' | 'preparing' | 'ready' | 'delivered';
 }
 
 export interface CatalogOrder {

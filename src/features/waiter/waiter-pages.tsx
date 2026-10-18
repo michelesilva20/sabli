@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { CatalogProductsState } from '@/features/catalog/catalog-products-state';
 import { ProductCatalogCard, ProductCategoryTabs } from '@/features/catalog/product-card';
 import { PizzaBuilder } from '@/features/pizza-builder/pizza-builder';
 import {
@@ -199,19 +200,26 @@ export function WaiterCatalogPage() {
           onChange={setCategory}
         />
       ) : null}
-      <div className="grid gap-3">
-        {products.map((product) => (
-          <ProductCatalogCard
-            key={product.id}
-            product={product}
-            available={session.availability[product.id] !== false}
-            onAdd={() => {
-              demoSession.addProduct(product);
-              setSheet(true);
-            }}
-          />
-        ))}
-      </div>
+      <CatalogProductsState
+        catalog={catalog}
+        visibleCount={products.length}
+        search={search}
+        onClearSearch={() => setSearch('')}
+      >
+        <div className="grid gap-3">
+          {products.map((product) => (
+            <ProductCatalogCard
+              key={product.id}
+              product={product}
+              available={session.availability[product.id] !== false}
+              onAdd={() => {
+                demoSession.addProduct(product);
+                setSheet(true);
+              }}
+            />
+          ))}
+        </div>
+      </CatalogProductsState>
       <Drawer
         open={sheet}
         onOpenChange={setSheet}

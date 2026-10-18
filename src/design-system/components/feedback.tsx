@@ -53,13 +53,16 @@ export function EmptyState({
   title,
   description,
   action,
+  icon,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  icon?: ReactNode;
 }) {
   return (
     <div className="grid justify-items-center gap-2 rounded-[20px] border border-dashed border-border bg-card px-6 py-12 text-center">
+      {icon ? <div className="text-muted-foreground">{icon}</div> : null}
       <h3 className="text-lg font-extrabold">{title}</h3>
       <p className="max-w-md text-sm text-muted-foreground">{description}</p>
       {action}

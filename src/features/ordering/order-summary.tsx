@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react';
 import { QuantityInput } from '@/design-system/components/number-input';
 import { Button } from '@/design-system/components/button';
 import { Switch } from '@/design-system/components/choice';
@@ -24,11 +25,25 @@ export function OrderItemRow({ line }: { line: OrderLine }) {
         </p>
       </div>
       <div className="grid justify-items-end gap-2">
-        <QuantityInput
-          value={line.quantity}
-          label={line.name}
-          onChange={(next) => demoSession.setQuantity(line.id, next)}
-        />
+        <div className="flex items-center gap-1">
+          <QuantityInput
+            value={line.quantity}
+            label={line.name}
+            onChange={(next) => demoSession.setQuantity(line.id, next)}
+          />
+          {line.quantity === 1 ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="size-9"
+              aria-label={`Remover ${line.name}`}
+              onClick={() => demoSession.removeLine(line.id)}
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+        </div>
         <p className="tabular text-sm font-extrabold">
           {formatBRL(
             lineTotalCents({ quantity: line.quantity, unitPriceCents: line.unitPriceCents }),

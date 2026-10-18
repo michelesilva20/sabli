@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { CatalogProductsState } from '@/features/catalog/catalog-products-state';
 import { ProductCatalogCard, ProductCategoryTabs } from '@/features/catalog/product-card';
 import { OrderSummary } from '@/features/ordering/order-summary';
 import { useCatalogQuery } from '@/shared/api/hooks';
 import { demoSession, useDemoSession } from '@/shared/demo/session';
 import { Button } from '@/design-system/components/button';
-import { EmptyState, Skeleton } from '@/design-system/components/feedback';
 import { SearchInput } from '@/design-system/components/input';
 import { PageHeader } from '@/design-system/components/navigation';
 import { pushToast } from '@/design-system/components/toast';
@@ -53,23 +53,12 @@ export function PosPage() {
           {!search ? (
             <ProductCategoryTabs categories={categories} value={category} onChange={setCategory} />
           ) : null}
-          {catalog.isLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }, (_, index) => (
-                <Skeleton key={index} className="h-56" />
-              ))}
-            </div>
-          ) : products.length === 0 ? (
-            <EmptyState
-              title="Nenhum produto encontrado"
-              description="Tente outro nome ou volte para uma categoria do cardápio."
-              action={
-                <Button variant="outline" onClick={() => setSearch('')}>
-                  Limpar busca
-                </Button>
-              }
-            />
-          ) : (
+          <CatalogProductsState
+            catalog={catalog}
+            visibleCount={products.length}
+            search={search}
+            onClearSearch={() => setSearch('')}
+          >
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {products.map((product) => (
                 <ProductCatalogCard
@@ -85,7 +74,7 @@ export function PosPage() {
                 />
               ))}
             </div>
-          )}
+          </CatalogProductsState>
         </div>
         <OrderSummary
           confirmLabel="Enviar para cozinha"

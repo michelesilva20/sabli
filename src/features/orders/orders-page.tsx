@@ -1,4 +1,4 @@
-import { Banknote, Check, Clock, Package } from 'lucide-react';
+import { Banknote, Check, Clock, Hourglass, Package } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { StatusBadge } from '@/design-system/components/badge';
 import { DataTable } from '@/design-system/components/data-table';
@@ -12,6 +12,7 @@ import {
 import { useOrdersQuery } from '@/shared/api/hooks';
 import { formatDateTime, formatTime } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
+import { kitchenStatusToOrderStatus } from '@/shared/domain/kitchen';
 import { saleItemTitle } from '@/shared/domain/order';
 import { useDemoSession } from '@/shared/demo/session';
 import type { CatalogOrder } from '@/shared/types/domain';
@@ -24,6 +25,7 @@ type StatusFilter = 'all' | CatalogOrder['status'];
 
 const filters: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'Todos' },
+  { id: 'aberto', label: 'Aguardando' },
   { id: 'em preparo', label: 'Em preparo' },
   { id: 'pronto', label: 'Prontos' },
   { id: 'entregue', label: 'Entregues' },
@@ -60,6 +62,7 @@ export function OrdersPage() {
       .filter((row) => row.status !== 'cancelado')
       .reduce((sum, row) => sum + row.totalCents, 0);
     return {
+      waiting: by('aberto'),
       preparing: by('em preparo'),
       ready: by('pronto'),
       delivered: by('entregue'),
@@ -96,7 +99,15 @@ export function OrdersPage() {
         description="Acompanhe o que está na cozinha, o que está pronto e o que já saiu."
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <Stat
+          label="Aguardando"
+          value={String(counts.waiting)}
+          icon={<Hourglass className="size-5" />}
+          tone="bg-info-soft text-info"
+          active={filter === 'aberto'}
+          onClick={() => applyFilter(filter === 'aberto' ? 'all' : 'aberto')}
+        />
         <Stat
           label="Em preparo"
           value={String(counts.preparing)}
@@ -257,7 +268,16 @@ export function OrdersPage() {
                 >
                   <div className="flex min-w-0 gap-2">
                     <span className="font-extrabold">{item.quantity}×</span>
-                    <OrderItemComposition name={item.name} notes={item.notes} pizza={item.pizza} />
+                    <div className="grid min-w-0 gap-1">
+                      <OrderItemComposition
+                        name={item.name}
+                        notes={item.notes}
+                        pizza={item.pizza}
+                      />
+                      {item.productionStatus ? (
+                        <StatusBadge status={kitchenStatusToOrderStatus(item.productionStatus)} />
+                      ) : null}
+                    </div>
                   </div>
                   <span className="tabular font-bold">{formatBRL(item.totalCents)}</span>
                 </li>

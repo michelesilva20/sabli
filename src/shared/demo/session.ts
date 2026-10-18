@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import { nextKitchenStatus, type KitchenStatus } from '@/shared/domain/kitchen';
+import {
+  aggregateKitchenStatus,
+  itemKitchenStatus,
+  kitchenStatusToOrderStatus,
+  nextKitchenStatus,
+  type KitchenStatus,
+} from '@/shared/domain/kitchen';
 import {
   ILLUSTRATIVE_DISCOUNT_PERCENT,
   orderDiscountCents,
@@ -8,7 +14,13 @@ import {
 } from '@/shared/domain/order';
 import { minutesAgoIso } from '@/shared/domain/date';
 import { currentUser, diningTables, kitchenSeeds, products, staff } from '@/shared/mocks/fixtures';
-import type { PaymentMethod, PizzaComposition, SaleItem, StaffMember } from '@/shared/types/domain';
+import type {
+  CatalogOrder,
+  PaymentMethod,
+  PizzaComposition,
+  SaleItem,
+  StaffMember,
+} from '@/shared/types/domain';
 
 export interface OrderLine {
   id: string;
@@ -27,6 +39,7 @@ export interface TicketItem {
   quantity: number;
   notes?: string;
   pizza?: PizzaComposition;
+  status?: KitchenStatus;
 }
 
 export interface LiveTicket {
@@ -73,7 +86,7 @@ export interface LocalOrder {
   id: string;
   number: string;
   channel: string;
-  status: 'em preparo' | 'entregue';
+  status: CatalogOrder['status'];
   subtotalCents: number;
   discountCents: number;
   totalCents: number;
@@ -136,6 +149,7 @@ function createState(): DemoState {
         name: item.name,
         quantity: item.quantity,
         notes: item.notes,
+        status: seed.status,
       })),
     })),
     availability: Object.fromEntries(products.map((product) => [product.id, product.available])),
@@ -187,6 +201,47 @@ export function selectOrderTotals(current: Pick<DemoState, 'lines' | 'discountPe
     discountCents,
     totalCents: orderTotalCents(subtotalCents, discountCents),
   };
+}
+
+function ticketItemStatuses(ticket: LiveTicket): KitchenStatus[] {
+  return ticket.items.map((item) => itemKitchenStatus(item, ticket.status));
+}
+
+function withTicketItemStatuses(ticket: LiveTicket, items: TicketItem[]): LiveTicket {
+  const nextItems = items.map((item) => ({
+    ...item,
+    status: itemKitchenStatus(item, ticket.status),
+  }));
+  return {
+    ...ticket,
+    items: nextItems,
+    status: aggregateKitchenStatus(nextItems.map((item) => item.status ?? ticket.status)),
+  };
+}
+
+function syncOrdersFromTicket(orders: LocalOrder[], ticket: LiveTicket): LocalOrder[] {
+  return orders.map((order) => {
+    if (order.number !== ticket.number) return order;
+    const items = order.items.map((item) => {
+      const ticketItem = ticket.items.find((entry) => entry.lineId === item.lineId);
+      if (!ticketItem) return item;
+      return {
+        ...item,
+        productionStatus: itemKitchenStatus(ticketItem, ticket.status),
+      };
+    });
+    const statuses = items
+      .map((item) => item.productionStatus)
+      .filter((status): status is KitchenStatus => Boolean(status));
+    return {
+      ...order,
+      items,
+      status:
+        statuses.length === items.length
+          ? kitchenStatusToOrderStatus(aggregateKitchenStatus(statuses))
+          : order.status,
+    };
+  });
 }
 
 export const demoSession = {
@@ -313,12 +368,13 @@ export const demoSession = {
       totalCents: line.unitPriceCents * line.quantity,
       notes: line.notes,
       pizza: line.pizza,
+      productionStatus: 'waiting',
     }));
     const order: LocalOrder = {
       id: crypto.randomUUID(),
       number,
       channel: origin,
-      status: 'em preparo',
+      status: kitchenStatusToOrderStatus('waiting'),
       subtotalCents: totals.subtotalCents,
       discountCents: totals.discountCents,
       totalCents: totals.totalCents,
@@ -345,6 +401,7 @@ export const demoSession = {
             quantity: item.quantity,
             notes: item.notes,
             pizza: item.pizza,
+            status: 'waiting' as const,
           })),
         },
         ...current.tickets,
@@ -366,14 +423,56 @@ export const demoSession = {
   advanceTicket(ticketId: string) {
     const ticket = state.tickets.find((item) => item.id === ticketId);
     if (!ticket) return false;
-    const next = nextKitchenStatus(ticket.status);
+    const currentStatus = aggregateKitchenStatus(ticketItemStatuses(ticket));
+    const next = nextKitchenStatus(currentStatus);
     if (!next) return false;
-    update((current) => ({
-      ...current,
-      tickets: current.tickets.map((item) =>
-        item.id === ticketId ? { ...item, status: next } : item,
-      ),
-    }));
+    update((current) => {
+      const tickets = current.tickets.map((item) => {
+        if (item.id !== ticketId) return item;
+        const items = item.items.map((entry) => {
+          const status = itemKitchenStatus(entry, item.status);
+          return { ...entry, status: status === currentStatus ? next : status };
+        });
+        return withTicketItemStatuses(item, items);
+      });
+      const updated = tickets.find((item) => item.id === ticketId);
+      return {
+        ...current,
+        tickets,
+        localOrders: updated
+          ? syncOrdersFromTicket(current.localOrders, updated)
+          : current.localOrders,
+      };
+    });
+    return true;
+  },
+  advanceTicketItem(ticketId: string, lineId: string) {
+    const ticket = state.tickets.find((item) => item.id === ticketId);
+    if (!ticket) return false;
+    const item = ticket.items.find((entry) => entry.lineId === lineId);
+    if (!item) return false;
+    const currentStatus = itemKitchenStatus(item, ticket.status);
+    const next = nextKitchenStatus(currentStatus);
+    if (!next) return false;
+    update((current) => {
+      const tickets = current.tickets.map((entry) => {
+        if (entry.id !== ticketId) return entry;
+        const items = entry.items.map((ticketItem) =>
+          ticketItem.lineId === lineId
+            ? { ...ticketItem, status: next }
+            : { ...ticketItem, status: itemKitchenStatus(ticketItem, entry.status) },
+        );
+        return withTicketItemStatuses(entry, items);
+      });
+      const updated = tickets.find((entry) => entry.id === ticketId);
+      return {
+        ...current,
+        tickets,
+        localOrders: updated
+          ? syncOrdersFromTicket(current.localOrders, updated)
+          : current.localOrders,
+      };
+    });
     return true;
   },
   setProductAvailable(productId: string, available: boolean) {
