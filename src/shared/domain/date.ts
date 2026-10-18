@@ -30,8 +30,12 @@ export function minutesAgoIso(minutes: number, now = Date.now()): string {
   return new Date(now - minutes * 60_000).toISOString();
 }
 
+export function elapsedMinutes(iso: string, now = Date.now()): number {
+  return Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
+}
+
 export function elapsedLabel(iso: string, now = Date.now()): string {
-  const minutes = Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
+  const minutes = elapsedMinutes(iso, now);
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;

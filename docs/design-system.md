@@ -38,7 +38,7 @@ Sombras são suaves no claro e discretas no escuro. Não há vidro fosco como li
 
 Preferências: claro, escuro e sistema. A escolha fica em `localStorage` na chave `sabli-theme`. Um script no `index.html` aplica a classe `dark` antes do React para evitar o flash do tema errado.
 
-O KDS usa a classe `.kds`, com fundo operacional escuro independente do tema global. Os tickets continuam claros para leitura.
+O KDS usa a classe `.kds`, com fundo operacional escuro independente do tema global. Os tickets também são escuros, com alto contraste e o tempo colorido por urgência.
 
 ## Componentes
 
