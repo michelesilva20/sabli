@@ -94,24 +94,37 @@ export function PizzaBuilder({
 
   function addToOrder() {
     if (!price) return;
-    const flavorNames = flavors
-      .filter((flavor) => flavorIds.includes(flavor.id))
-      .map((flavor) => flavor.name);
     const crust = crusts.find((item) => item.id === crustId);
-    const extraNames = extras
-      .filter((extra) => extraIds.includes(extra.id))
-      .map((extra) => extra.name);
+    if (!crust) return;
+    const selectedFlavors = portions.flatMap((portion) => {
+      const flavor = flavors.find((item) => item.id === portion.flavorId);
+      if (!flavor) return [];
+      return [
+        {
+          id: flavor.id,
+          name: flavor.name,
+          numerator: portion.numerator,
+          denominator: portion.denominator,
+        },
+      ];
+    });
+    if (selectedFlavors.length !== portions.length) return;
+    const selectedExtras = extras.filter((extra) => extraIds.includes(extra.id));
     demoSession.addConfiguredItem({
       name: `Pizza ${size.name.toLowerCase()}`,
-      detail: flavorNames.join(' / '),
       unitPriceCents: price.totalCents,
-      notes: [
-        crust && crust.priceCents > 0 ? `Borda ${crust.name}` : null,
-        extraNames.join(', '),
-        notes,
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      notes: notes.trim() || undefined,
+      pizza: {
+        sizeId: size.id,
+        sizeName: size.name,
+        flavors: selectedFlavors,
+        crust: { id: crust.id, name: crust.name, priceCents: crust.priceCents },
+        extras: selectedExtras.map((extra) => ({
+          id: extra.id,
+          name: extra.name,
+          priceCents: extra.priceCents,
+        })),
+      },
     });
     setAdded(true);
     pushToast({

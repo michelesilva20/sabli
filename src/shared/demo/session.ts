@@ -1,17 +1,32 @@
 import { useSyncExternalStore } from 'react';
 import { nextKitchenStatus, type KitchenStatus } from '@/shared/domain/kitchen';
-import { orderDiscountCents, orderSubtotalCents, orderTotalCents } from '@/shared/domain/order';
+import {
+  ILLUSTRATIVE_DISCOUNT_PERCENT,
+  orderDiscountCents,
+  orderSubtotalCents,
+  orderTotalCents,
+} from '@/shared/domain/order';
 import { minutesAgoIso } from '@/shared/domain/date';
 import { currentUser, diningTables, kitchenSeeds, products, staff } from '@/shared/mocks/fixtures';
-import type { PaymentMethod, StaffMember } from '@/shared/types/domain';
+import type { PaymentMethod, PizzaComposition, SaleItem, StaffMember } from '@/shared/types/domain';
 
 export interface OrderLine {
   id: string;
+  productId?: string;
   name: string;
-  detail?: string;
   quantity: number;
+  unit: 'un';
   unitPriceCents: number;
   notes?: string;
+  pizza?: PizzaComposition;
+}
+
+export interface TicketItem {
+  lineId: string;
+  name: string;
+  quantity: number;
+  notes?: string;
+  pizza?: PizzaComposition;
 }
 
 export interface LiveTicket {
@@ -21,7 +36,7 @@ export interface LiveTicket {
   status: KitchenStatus;
   priority: 'normal' | 'high';
   createdAt: string;
-  items: { name: string; quantity: number; notes?: string }[];
+  items: TicketItem[];
 }
 
 export interface LiveTable {
@@ -59,9 +74,11 @@ export interface LocalOrder {
   number: string;
   channel: string;
   status: 'em preparo' | 'entregue';
+  subtotalCents: number;
+  discountCents: number;
   totalCents: number;
   openedAt: string;
-  items: { name: string; quantity: number; totalCents: number }[];
+  items: SaleItem[];
 }
 
 export interface DemoProfile {
@@ -114,7 +131,12 @@ function createState(): DemoState {
       status: seed.status,
       priority: seed.priority,
       createdAt: minutesAgoIso(seed.minutesAgo, now),
-      items: seed.items,
+      items: seed.items.map((item, index) => ({
+        lineId: `${seed.id}:${index}`,
+        name: item.name,
+        quantity: item.quantity,
+        notes: item.notes,
+      })),
     })),
     availability: Object.fromEntries(products.map((product) => [product.id, product.available])),
     cash: null,
@@ -171,7 +193,7 @@ export const demoSession = {
   addProduct(product: { id: string; name: string; priceCents: number }) {
     if (state.availability[product.id] === false) return false;
     update((current) => {
-      const existing = current.lines.find((line) => line.name === product.name && !line.detail);
+      const existing = current.lines.find((line) => line.productId === product.id && !line.pizza);
       if (existing) {
         return {
           ...current,
@@ -186,8 +208,10 @@ export const demoSession = {
           ...current.lines,
           {
             id: crypto.randomUUID(),
+            productId: product.id,
             name: product.name,
             quantity: 1,
+            unit: 'un',
             unitPriceCents: product.priceCents,
           },
         ],
@@ -197,9 +221,10 @@ export const demoSession = {
   },
   addConfiguredItem(input: {
     name: string;
-    detail?: string;
     unitPriceCents: number;
     notes?: string;
+    pizza?: PizzaComposition;
+    productId?: string;
   }) {
     update((current) => ({
       ...current,
@@ -207,11 +232,13 @@ export const demoSession = {
         ...current.lines,
         {
           id: crypto.randomUUID(),
+          productId: input.productId,
           name: input.name,
-          detail: input.detail,
           quantity: 1,
+          unit: 'un',
           unitPriceCents: input.unitPriceCents,
-          notes: input.notes,
+          notes: input.notes?.trim() || undefined,
+          pizza: input.pizza,
         },
       ],
     }));
@@ -232,7 +259,10 @@ export const demoSession = {
     }));
   },
   setDiscount(enabled: boolean) {
-    update((current) => ({ ...current, discountPercent: enabled ? 10 : 0 }));
+    update((current) => ({
+      ...current,
+      discountPercent: enabled ? ILLUSTRATIVE_DISCOUNT_PERCENT : 0,
+    }));
   },
   clearOrder() {
     update((current) => ({ ...current, lines: [], discountPercent: 0 }));
@@ -273,23 +303,27 @@ export const demoSession = {
     const origin = table ? `Mesa ${String(table.number).padStart(2, '0')}` : 'Balcão';
     const number = String(state.orderSequence);
     const openedAt = new Date().toISOString();
-    const items = state.lines.map((line) => ({
-      name: line.detail ? `${line.name} · ${line.detail}` : line.name,
+    const items: SaleItem[] = state.lines.map((line) => ({
+      lineId: line.id,
+      productId: line.productId,
+      name: line.name,
       quantity: line.quantity,
+      unit: line.unit,
+      unitPriceCents: line.unitPriceCents,
+      totalCents: line.unitPriceCents * line.quantity,
       notes: line.notes,
+      pizza: line.pizza,
     }));
     const order: LocalOrder = {
       id: crypto.randomUUID(),
       number,
       channel: origin,
       status: 'em preparo',
+      subtotalCents: totals.subtotalCents,
+      discountCents: totals.discountCents,
       totalCents: totals.totalCents,
       openedAt,
-      items: state.lines.map((line) => ({
-        name: line.name,
-        quantity: line.quantity,
-        totalCents: line.unitPriceCents * line.quantity,
-      })),
+      items,
     };
     update((current) => ({
       ...current,
@@ -305,7 +339,13 @@ export const demoSession = {
           status: 'waiting',
           priority: 'normal',
           createdAt: openedAt,
-          items,
+          items: items.map((item) => ({
+            lineId: item.lineId ?? crypto.randomUUID(),
+            name: item.name,
+            quantity: item.quantity,
+            notes: item.notes,
+            pizza: item.pizza,
+          })),
         },
         ...current.tickets,
       ],

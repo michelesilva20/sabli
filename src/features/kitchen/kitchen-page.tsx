@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { KITCHEN_ACTION_LABEL, KITCHEN_FLOW, KITCHEN_STATUS_LABEL } from '@/shared/domain/kitchen';
 import { elapsedLabel, elapsedMinutes } from '@/shared/domain/date';
+import { OrderItemComposition } from '@/features/ordering/order-item-composition';
 import { demoSession, useDemoSession, type LiveTicket } from '@/shared/demo/session';
 import { cn } from '@/shared/utils/cn';
 
@@ -74,17 +75,17 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
       </header>
       <ul className="mt-4 grid gap-2.5 pl-2">
         {ticket.items.map((item) => (
-          <li key={`${ticket.id}-${item.name}`} className="flex items-start gap-3">
+          <li key={item.lineId} className="flex items-start gap-3">
             <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-muted text-sm font-extrabold">
               {item.quantity}
             </span>
             <span className="min-w-0 pt-0.5">
-              <span className="block text-[15px] leading-snug font-extrabold">{item.name}</span>
-              {item.notes ? (
-                <span className="mt-0.5 block text-xs font-semibold text-muted-foreground">
-                  {item.notes}
-                </span>
-              ) : null}
+              <OrderItemComposition
+                name={item.name}
+                notes={item.notes}
+                pizza={item.pizza}
+                nameClassName="text-[15px] leading-snug"
+              />
             </span>
           </li>
         ))}

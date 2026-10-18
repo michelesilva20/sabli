@@ -5,9 +5,14 @@ import { DataTable } from '@/design-system/components/data-table';
 import { SearchInput } from '@/design-system/components/input';
 import { PageHeader, Pagination } from '@/design-system/components/navigation';
 import { Sheet } from '@/design-system/components/sheet';
+import {
+  OrderAmountBreakdown,
+  OrderItemComposition,
+} from '@/features/ordering/order-item-composition';
 import { useOrdersQuery } from '@/shared/api/hooks';
 import { formatDateTime, formatTime } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
+import { saleItemTitle } from '@/shared/domain/order';
 import { useDemoSession } from '@/shared/demo/session';
 import type { CatalogOrder } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
@@ -27,7 +32,7 @@ const filters: { id: StatusFilter; label: string }[] = [
 
 function itemSummary(items: OrderRow['items']) {
   if (items.length === 0) return 'Sem itens';
-  const first = `${items[0].quantity}× ${items[0].name}`;
+  const first = `${items[0].quantity}× ${saleItemTitle(items[0])}`;
   if (items.length === 1) return first;
   return `${first} · +${items.length - 1}`;
 }
@@ -240,21 +245,31 @@ export function OrdersPage() {
           <div className="grid gap-4">
             <div className="flex items-center justify-between gap-3">
               <StatusBadge status={current.status} />
-              <p className="tabular text-2xl font-extrabold">{formatBRL(current.totalCents)}</p>
+              {current.subtotalCents === undefined ? (
+                <p className="tabular text-2xl font-extrabold">{formatBRL(current.totalCents)}</p>
+              ) : null}
             </div>
             <ul className="divide-y divide-border rounded-[16px] border border-border">
-              {current.items.map((item) => (
+              {current.items.map((item, index) => (
                 <li
-                  key={item.name}
-                  className="flex items-center justify-between gap-3 px-3 py-3 text-sm"
+                  key={item.lineId ?? `${item.name}-${index}`}
+                  className="flex items-start justify-between gap-3 px-3 py-3 text-sm"
                 >
-                  <span>
-                    <span className="font-extrabold">{item.quantity}×</span> {item.name}
-                  </span>
+                  <div className="flex min-w-0 gap-2">
+                    <span className="font-extrabold">{item.quantity}×</span>
+                    <OrderItemComposition name={item.name} notes={item.notes} pizza={item.pizza} />
+                  </div>
                   <span className="tabular font-bold">{formatBRL(item.totalCents)}</span>
                 </li>
               ))}
             </ul>
+            {current.subtotalCents !== undefined ? (
+              <OrderAmountBreakdown
+                subtotalCents={current.subtotalCents}
+                discountCents={current.discountCents ?? 0}
+                totalCents={current.totalCents}
+              />
+            ) : null}
           </div>
         ) : null}
       </Sheet>

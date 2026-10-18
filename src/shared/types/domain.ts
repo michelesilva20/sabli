@@ -122,14 +122,49 @@ export interface DashboardSnapshot {
   recentOrders: RecentOrder[];
 }
 
+export interface PizzaFlavorPortion {
+  id: string;
+  name: string;
+  numerator: number;
+  denominator: number;
+}
+
+export interface PricedOption {
+  id: string;
+  name: string;
+  priceCents: number;
+}
+
+export interface PizzaComposition {
+  sizeId: string;
+  sizeName: string;
+  flavors: PizzaFlavorPortion[];
+  crust: PricedOption;
+  extras: PricedOption[];
+}
+
+export interface SaleItem {
+  lineId?: string;
+  productId?: string;
+  name: string;
+  quantity: number;
+  unit?: 'un';
+  unitPriceCents?: number;
+  totalCents: number;
+  notes?: string;
+  pizza?: PizzaComposition;
+}
+
 export interface CatalogOrder {
   id: string;
   number: string;
   channel: string;
   status: 'aberto' | 'em preparo' | 'pronto' | 'entregue' | 'cancelado';
+  subtotalCents?: number;
+  discountCents?: number;
   totalCents: number;
   openedAt: string;
-  items: { name: string; quantity: number; totalCents: number }[];
+  items: SaleItem[];
 }
 
 export interface NotificationItem {

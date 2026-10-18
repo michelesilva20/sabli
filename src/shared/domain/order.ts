@@ -1,4 +1,7 @@
 import { percentOfCents, sumCents } from '@/shared/domain/money';
+import type { PizzaComposition, PizzaFlavorPortion } from '@/shared/types/domain';
+
+export const ILLUSTRATIVE_DISCOUNT_PERCENT = 10;
 
 export interface PricedLine {
   quantity: number;
@@ -20,4 +23,13 @@ export function orderDiscountCents(subtotalCents: number, discountPercent: numbe
 
 export function orderTotalCents(subtotalCents: number, discountCents: number): number {
   return Math.max(0, subtotalCents - discountCents);
+}
+
+export function flavorPortionLabel(flavor: PizzaFlavorPortion): string {
+  return `${flavor.numerator}/${flavor.denominator} ${flavor.name}`;
+}
+
+export function saleItemTitle(item: { name: string; pizza?: PizzaComposition }): string {
+  if (!item.pizza || item.pizza.flavors.length === 0) return item.name;
+  return `${item.name} · ${item.pizza.flavors.map(flavorPortionLabel).join(', ')}`;
 }

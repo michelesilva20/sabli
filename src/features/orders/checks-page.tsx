@@ -7,9 +7,14 @@ import { EmptyState } from '@/design-system/components/feedback';
 import { PageHeader } from '@/design-system/components/navigation';
 import { Sheet } from '@/design-system/components/sheet';
 import { pushToast } from '@/design-system/components/toast';
+import {
+  OrderAmountBreakdown,
+  OrderItemComposition,
+} from '@/features/ordering/order-item-composition';
 import { useOrdersQuery } from '@/shared/api/hooks';
 import { elapsedLabel } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
+import { saleItemTitle } from '@/shared/domain/order';
 import { demoSession, useDemoSession, type LiveTable } from '@/shared/demo/session';
 import type { CatalogOrder } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
@@ -34,7 +39,7 @@ function latestPreview(number: number, orders: CatalogOrder[]) {
   const channel = channelFor(number);
   const match = orders.find((order) => order.channel === channel && order.status !== 'cancelado');
   if (!match || match.items.length === 0) return null;
-  const first = `${match.items[0].quantity}× ${match.items[0].name}`;
+  const first = `${match.items[0].quantity}× ${saleItemTitle(match.items[0])}`;
   if (match.items.length === 1) return first;
   return `${first} · +${match.items.length - 1}`;
 }
@@ -226,6 +231,7 @@ export function ChecksPage() {
                 <CheckDetail
                   table={selected}
                   preview={latestPreview(selected.number, orders)}
+                  sessionOrders={sessionOrdersFor(selected.number, orders)}
                   onAdd={() => addItems(selected)}
                   onCash={() => goToCash(selected)}
                   onBill={() => askBill(selected)}
@@ -246,6 +252,7 @@ export function ChecksPage() {
           <CheckDetail
             table={selected}
             preview={latestPreview(selected.number, orders)}
+            sessionOrders={sessionOrdersFor(selected.number, orders)}
             onAdd={() => addItems(selected)}
             onCash={() => goToCash(selected)}
             onBill={() => askBill(selected)}
@@ -256,15 +263,22 @@ export function ChecksPage() {
   );
 }
 
+function sessionOrdersFor(number: number, orders: CatalogOrder[]) {
+  const channel = channelFor(number);
+  return orders.filter((order) => order.channel === channel && order.subtotalCents !== undefined);
+}
+
 function CheckDetail({
   table,
   preview,
+  sessionOrders,
   onAdd,
   onCash,
   onBill,
 }: {
   table: LiveTable;
   preview: string | null;
+  sessionOrders: CatalogOrder[];
   onAdd: () => void;
   onCash: () => void;
   onBill: () => void;
@@ -290,7 +304,37 @@ function CheckDetail({
         <Meta label="Aberta" value={table.openedAt ? elapsedLabel(table.openedAt) : 'agora'} />
         <Meta label="Lugares" value={String(table.seats)} />
       </dl>
-      {preview ? (
+      {sessionOrders.length > 0 ? (
+        <div className="grid gap-3">
+          <div>
+            <p className="text-xs font-extrabold text-muted-foreground">Pedidos desta sessão</p>
+            <p className="mt-1 text-xs font-semibold text-muted-foreground">
+              A conta parcial também inclui o consumo de exemplo já registrado na mesa. Esses
+              pedidos não substituem esse saldo.
+            </p>
+          </div>
+          {sessionOrders.map((order) => (
+            <div key={order.id} className="grid gap-2 rounded-[16px] bg-muted px-3 py-3">
+              <p className="text-sm font-extrabold">Pedido #{order.number}</p>
+              <ul className="grid gap-2">
+                {order.items.map((item, index) => (
+                  <li key={item.lineId ?? `${item.name}-${index}`} className="flex gap-2 text-sm">
+                    <span className="font-extrabold">{item.quantity}×</span>
+                    <OrderItemComposition name={item.name} notes={item.notes} pizza={item.pizza} />
+                  </li>
+                ))}
+              </ul>
+              {order.subtotalCents !== undefined ? (
+                <OrderAmountBreakdown
+                  subtotalCents={order.subtotalCents}
+                  discountCents={order.discountCents ?? 0}
+                  totalCents={order.totalCents}
+                />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : preview ? (
         <div className="rounded-[16px] bg-muted px-3 py-3">
           <p className="text-xs font-extrabold text-muted-foreground">Último pedido</p>
           <p className="mt-1 text-sm font-bold">{preview}</p>

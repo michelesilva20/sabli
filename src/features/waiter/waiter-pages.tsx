@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ProductCatalogCard, ProductCategoryTabs } from '@/features/catalog/product-card';
 import { PizzaBuilder } from '@/features/pizza-builder/pizza-builder';
+import {
+  OrderAmountBreakdown,
+  OrderItemComposition,
+} from '@/features/ordering/order-item-composition';
 import { OrderSummary } from '@/features/ordering/order-summary';
 import { useCatalogQuery } from '@/shared/api/hooks';
 import { demoSession, selectOrderTotals, useDemoSession } from '@/shared/demo/session';
@@ -135,13 +139,21 @@ export function WaiterCheckPage() {
           {orders.map((order) => (
             <li key={order.id} className="rounded-[16px] bg-card p-4 shadow-card">
               <p className="font-extrabold">Pedido #{order.number}</p>
-              <ul className="mt-2 text-sm">
-                {order.items.map((item) => (
-                  <li key={item.name}>
-                    {item.quantity}× {item.name}
+              <ul className="mt-2 grid gap-2 text-sm">
+                {order.items.map((item, index) => (
+                  <li key={item.lineId ?? `${item.name}-${index}`} className="flex gap-2">
+                    <span className="font-extrabold">{item.quantity}×</span>
+                    <OrderItemComposition name={item.name} notes={item.notes} pizza={item.pizza} />
                   </li>
                 ))}
               </ul>
+              <div className="mt-3">
+                <OrderAmountBreakdown
+                  subtotalCents={order.subtotalCents}
+                  discountCents={order.discountCents}
+                  totalCents={order.totalCents}
+                />
+              </div>
             </li>
           ))}
         </ul>
