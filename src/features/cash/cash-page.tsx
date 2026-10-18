@@ -8,13 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/design-system/compon
 import { ConfirmationDialog } from '@/design-system/components/alert-dialog';
 import { fieldDescribedBy, FormField } from '@/design-system/components/form-field';
 import { Input } from '@/design-system/components/input';
-import { CurrencyInput, QuantityInput } from '@/design-system/components/number-input';
+import { CurrencyInput } from '@/design-system/components/number-input';
 import { PageHeader } from '@/design-system/components/navigation';
 import { pushToast } from '@/design-system/components/toast';
-import { splitBill } from '@/shared/domain/bill';
+import { BillSettlement } from '@/features/cash/bill-settlement';
+import { drawerCashCents, PAYMENT_METHOD_LABEL, salesByMethod } from '@/shared/domain/bill';
 import { formatDateTime } from '@/shared/domain/date';
 import { formatBRL, sumCents } from '@/shared/domain/money';
-import { activeServiceFor, demoSession, useDemoSession } from '@/shared/demo/session';
+import { demoSession, useDemoSession } from '@/shared/demo/session';
 import type { PaymentMethod } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
 
@@ -37,8 +38,6 @@ export function CashPage() {
   const session = useDemoSession();
   const [method, setMethod] = useState<PaymentMethod>('pix');
   const [amount, setAmount] = useState(0);
-  const [people, setPeople] = useState(2);
-  const [splitBase, setSplitBase] = useState(13420);
   const [closeOpen, setCloseOpen] = useState(false);
   const [movementLabel, setMovementLabel] = useState('Sangria');
   const [movementAmount, setMovementAmount] = useState(0);
@@ -48,12 +47,15 @@ export function CashPage() {
   });
 
   const cash = session.cash;
+  const awaitingTables = session.tables.filter((table) => table.status === 'awaiting_bill');
   const activeTable = session.tables.find((table) => table.id === session.activeTableId);
-  const activeService = activeServiceFor(session.services, session.activeTableId);
-  const awaitingTable = activeTable?.status === 'awaiting_bill' ? activeTable : null;
+  const settlementId =
+    activeTable?.status === 'awaiting_bill' ? activeTable.id : (awaitingTables[0]?.id ?? null);
+  const awaitingTable = session.tables.find((table) => table.id === settlementId) ?? null;
   const sales = cash?.movements.filter((item) => item.type === 'sale') ?? [];
   const salesTotal = sumCents(sales.map((item) => item.amountCents));
-  const shares = splitBill(splitBase, people);
+  const drawer = cash ? drawerCashCents(cash.movements) : 0;
+  const byMethod = cash ? salesByMethod(cash.movements) : null;
 
   if (!cash) {
     return (
@@ -65,8 +67,8 @@ export function CashPage() {
         {awaitingTable ? (
           <Banner>
             Mesa {String(awaitingTable.number).padStart(2, '0')} aguarda pagamento demonstrativo de{' '}
-            {formatBRL(awaitingTable.billCents)}. Abra o turno para encerrar o atendimento. A mesa
-            não será liberada automaticamente.
+            {formatBRL(awaitingTable.billCents)}. Abra o turno para registrar a quitação. Caixa
+            aberto não quita a mesa sozinho.
           </Banner>
         ) : (
           <Banner>
@@ -146,19 +148,11 @@ export function CashPage() {
           </Button>
         }
       />
-      {awaitingTable ? (
-        <Banner>
-          Mesa {String(awaitingTable.number).padStart(2, '0')}
-          {activeService ? ` · ${activeService.hostName}` : ''} · conta solicitada de{' '}
-          {formatBRL(awaitingTable.billCents)}. Registrar o pagamento avulso não libera a mesa — use
-          o encerramento do atendimento.
-        </Banner>
-      ) : null}
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent>
-            <p className="text-sm text-muted-foreground">Fundo de troco</p>
-            <p className="tabular text-2xl font-extrabold">{formatBRL(cash.openingFloatCents)}</p>
+            <p className="text-sm text-muted-foreground">Gaveta em espécie</p>
+            <p className="tabular text-2xl font-extrabold">{formatBRL(drawer)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -169,22 +163,69 @@ export function CashPage() {
         </Card>
         <Card>
           <CardContent>
+            <p className="text-sm text-muted-foreground">Fundo de troco</p>
+            <p className="tabular text-2xl font-extrabold">{formatBRL(cash.openingFloatCents)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
             <p className="text-sm text-muted-foreground">Lançamentos</p>
             <p className="tabular text-2xl font-extrabold">{cash.movements.length}</p>
           </CardContent>
         </Card>
       </section>
-      <div className="grid gap-4 xl:grid-cols-2">
+      {byMethod ? (
+        <section className="grid gap-2 sm:grid-cols-4">
+          {(['cash', 'pix', 'debit', 'credit'] as const).map((item) => (
+            <div key={item} className="rounded-[16px] border border-border/70 bg-card px-4 py-3">
+              <p className="text-xs font-bold text-muted-foreground">
+                {PAYMENT_METHOD_LABEL[item]}
+              </p>
+              <p className="tabular mt-1 text-lg font-extrabold">{formatBRL(byMethod[item])}</p>
+            </div>
+          ))}
+        </section>
+      ) : null}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
         <Card>
           <CardHeader>
-            <CardTitle>Registrar pagamento</CardTitle>
+            <CardTitle>Fechamento de contas</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <Banner>Simulação local. Nenhuma transação financeira acontece.</Banner>
+            {awaitingTables.length > 1 ? (
+              <div className="flex flex-wrap gap-2">
+                {awaitingTables.map((table) => (
+                  <Button
+                    key={table.id}
+                    size="sm"
+                    variant={table.id === settlementId ? 'primary' : 'outline'}
+                    onClick={() => demoSession.selectTable(table.id)}
+                  >
+                    Mesa {String(table.number).padStart(2, '0')}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            {settlementId ? (
+              <BillSettlement tableId={settlementId} />
+            ) : (
+              <Banner>
+                Nenhuma mesa com conta solicitada. O lançamento avulso ao lado não quita
+                atendimento.
+              </Banner>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Lançamento avulso</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Banner>Não vincula mesa. Não informe dados de cartão.</Banner>
             <div
               className="grid grid-cols-2 gap-2"
               role="radiogroup"
-              aria-label="Forma de pagamento"
+              aria-label="Forma do lançamento avulso"
             >
               {methods.map((item) => (
                 <button
@@ -211,72 +252,16 @@ export function CashPage() {
                 const ok = demoSession.registerPayment({
                   amountCents: amount,
                   method,
-                  label: `Pagamento ${methods.find((item) => item.id === method)?.label}`,
+                  label: `Avulso ${methods.find((item) => item.id === method)?.label}`,
                 });
                 if (ok) {
                   setAmount(0);
-                  pushToast({ title: 'Pagamento demonstrativo registrado', tone: 'success' });
+                  pushToast({ title: 'Lançamento avulso registrado', tone: 'success' });
                 }
               }}
             >
-              Registrar pagamento
+              Registrar avulso
             </Button>
-            {awaitingTable ? (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  const result = demoSession.closeService(awaitingTable.id, {
-                    amountCents: awaitingTable.billCents,
-                    method,
-                    label: `Quitação demonstrativa · Mesa ${String(awaitingTable.number).padStart(2, '0')}`,
-                  });
-                  if (result.ok) {
-                    pushToast({
-                      title: `Mesa ${String(awaitingTable.number).padStart(2, '0')} encerrada`,
-                      description: 'Quitação apenas desta demonstração. Nenhum pagamento real.',
-                      tone: 'success',
-                    });
-                    return;
-                  }
-                  pushToast({
-                    title: 'Não foi possível liberar a mesa',
-                    description:
-                      result.reason === 'cash_closed'
-                        ? 'Abra o caixa para comprovar a quitação demonstrativa.'
-                        : 'Solicite a conta antes de encerrar o atendimento.',
-                    tone: 'danger',
-                  });
-                }}
-              >
-                Encerrar atendimento da mesa {String(awaitingTable.number).padStart(2, '0')}
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Dividir conta</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <CurrencyInput id="split-base" valueCents={splitBase} onValueChange={setSplitBase} />
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold">Pessoas</span>
-              <QuantityInput
-                value={people}
-                min={1}
-                max={12}
-                label="pessoas na divisão"
-                onChange={setPeople}
-              />
-            </div>
-            <ul className="grid gap-1 text-sm">
-              {shares.map((share, index) => (
-                <li key={index} className="flex justify-between rounded-[12px] bg-muted px-3 py-2">
-                  <span>Pessoa {index + 1}</span>
-                  <span className="tabular font-extrabold">{formatBRL(share)}</span>
-                </li>
-              ))}
-            </ul>
           </CardContent>
         </Card>
       </div>

@@ -12,7 +12,9 @@ import {
   orderSubtotalCents,
   orderTotalCents,
 } from '@/shared/domain/order';
+import { applyTender, paidCents, PAYMENT_METHOD_LABEL, remainingCents } from '@/shared/domain/bill';
 import { minutesAgoIso } from '@/shared/domain/date';
+import { formatBRL } from '@/shared/domain/money';
 import { currentUser, diningTables, kitchenSeeds, products, staff } from '@/shared/mocks/fixtures';
 import type {
   CatalogOrder,
@@ -80,8 +82,38 @@ export interface TableService {
   orderIds: string[];
 }
 
-export type CloseServiceReason = 'not_found' | 'bill_required' | 'cash_closed' | 'invalid';
+export type CloseServiceReason = 'not_found' | 'bill_required' | 'unpaid' | 'invalid';
 export type CloseServiceResult = { ok: true } | { ok: false; reason: CloseServiceReason };
+
+export interface TablePayment {
+  id: string;
+  tableId: string;
+  serviceId: string;
+  method: PaymentMethod;
+  appliedCents: number;
+  tenderedCents: number;
+  changeCents: number;
+  at: string;
+  label: string;
+}
+
+export type PayBillReason =
+  | 'not_found'
+  | 'bill_required'
+  | 'cash_closed'
+  | 'settled'
+  | 'over_remaining'
+  | 'empty'
+  | 'duplicate';
+
+export type PayBillResult =
+  | {
+      ok: true;
+      payment: TablePayment;
+      remainingCents: number;
+      changeCents: number;
+    }
+  | { ok: false; reason: PayBillReason };
 
 export function isActiveService(service: TableService) {
   return service.status === 'open' || service.status === 'awaiting_bill';
@@ -103,6 +135,25 @@ export function checkAccumulatedCents(service: TableService, orders: LocalOrder[
   return (
     service.seedBalanceCents +
     ordersForService(orders, service).reduce((sum, order) => sum + order.totalCents, 0)
+  );
+}
+
+export function paymentsForService(payments: TablePayment[], serviceId: string) {
+  return payments.filter((payment) => payment.serviceId === serviceId);
+}
+
+export function servicePaidCents(payments: TablePayment[], serviceId: string) {
+  return paidCents(paymentsForService(payments, serviceId));
+}
+
+export function serviceRemainingCents(
+  service: TableService,
+  orders: LocalOrder[],
+  payments: TablePayment[],
+) {
+  return remainingCents(
+    checkAccumulatedCents(service, orders),
+    servicePaidCents(payments, service.id),
   );
 }
 
@@ -160,6 +211,10 @@ export interface CashMovement {
   label: string;
   amountCents: number;
   method?: PaymentMethod;
+  tenderedCents?: number;
+  changeCents?: number;
+  tableId?: string;
+  paymentId?: string;
   at: string;
 }
 
@@ -205,6 +260,7 @@ interface DemoState {
   availability: Record<string, boolean>;
   cash: CashSession | null;
   localOrders: LocalOrder[];
+  payments: TablePayment[];
   activeTableId: string | null;
   extraStaff: StaffMember[];
   readNotificationIds: string[];
@@ -249,6 +305,7 @@ function createState(): DemoState {
     availability: Object.fromEntries(products.map((product) => [product.id, product.available])),
     cash: null,
     localOrders: [],
+    payments: [],
     activeTableId: null,
     extraStaff: [],
     readNotificationIds: [],
@@ -259,6 +316,8 @@ function createState(): DemoState {
 
 let state = createState();
 const listeners = new Set<() => void>();
+let lastPayKey = '';
+let lastPayAt = 0;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -284,6 +343,8 @@ export function useDemoSession() {
 
 export function resetDemoSession() {
   state = createState();
+  lastPayKey = '';
+  lastPayAt = 0;
   emit();
 }
 
@@ -483,6 +544,7 @@ export const demoSession = {
     ) {
       return false;
     }
+    if (paymentsForService(state.payments, service.id).length > 0) return false;
     update((current) => ({
       ...current,
       activeTableId: tableId,
@@ -495,10 +557,7 @@ export const demoSession = {
     }));
     return true;
   },
-  closeService(
-    tableId: string,
-    payment?: { amountCents: number; method: PaymentMethod; label: string },
-  ) {
+  payBill(tableId: string, input: { method: PaymentMethod; tenderedCents: number }) {
     const table = state.tables.find((item) => item.id === tableId);
     const service = activeServiceFor(state.services, tableId);
     if (!table || !service) return { ok: false, reason: 'not_found' } as const;
@@ -506,48 +565,100 @@ export const demoSession = {
       return { ok: false, reason: 'bill_required' } as const;
     }
     if (!state.cash) return { ok: false, reason: 'cash_closed' } as const;
-    const amountCents = payment?.amountCents ?? table.billCents;
-    const method = payment?.method ?? 'cash';
-    const label = payment?.label ?? `Quitação demonstrativa · ${tableChannel(table.number)}`;
-    const closedAt = new Date().toISOString();
+    const payKey = `${tableId}:${input.method}:${input.tenderedCents}`;
+    const now = Date.now();
+    if (payKey === lastPayKey && now - lastPayAt < 400) {
+      return { ok: false, reason: 'duplicate' } as const;
+    }
+    const remaining = serviceRemainingCents(service, state.localOrders, state.payments);
+    const tender = applyTender({
+      remainingCents: remaining,
+      method: input.method,
+      tenderedCents: input.tenderedCents,
+    });
+    if (!tender.ok) return { ok: false, reason: tender.reason } as const;
+    const at = new Date().toISOString();
+    const payment: TablePayment = {
+      id: crypto.randomUUID(),
+      tableId,
+      serviceId: service.id,
+      method: input.method,
+      appliedCents: tender.appliedCents,
+      tenderedCents: tender.tenderedCents,
+      changeCents: tender.changeCents,
+      at,
+      label: `${PAYMENT_METHOD_LABEL[input.method]} · ${tableChannel(table.number)}`,
+    };
+    lastPayKey = payKey;
+    lastPayAt = now;
     update((current) => {
       if (!current.cash) return current;
       return {
         ...current,
-        tables: current.tables.map((item) =>
-          item.id === tableId
-            ? {
-                ...item,
-                status: 'available',
-                guests: 0,
-                billCents: 0,
-                openedAt: null,
-              }
-            : item,
-        ),
-        services: current.services.map((item) =>
-          item.id === service.id ? { ...item, status: 'closed', closedAt } : item,
-        ),
-        cash:
-          amountCents > 0
-            ? {
-                ...current.cash,
-                movements: [
-                  {
-                    id: crypto.randomUUID(),
-                    type: 'sale',
-                    label,
-                    amountCents,
-                    method,
-                    at: closedAt,
-                  },
-                  ...current.cash.movements,
-                ],
-              }
-            : current.cash,
+        payments: [...current.payments, payment],
+        cash: {
+          ...current.cash,
+          movements: [
+            {
+              id: crypto.randomUUID(),
+              type: 'sale',
+              label:
+                payment.changeCents > 0
+                  ? `${payment.label} · troco ${formatBRL(payment.changeCents)}`
+                  : payment.label,
+              amountCents: payment.appliedCents,
+              method: payment.method,
+              tenderedCents: payment.tenderedCents,
+              changeCents: payment.changeCents,
+              tableId,
+              paymentId: payment.id,
+              at,
+            },
+            ...current.cash.movements,
+          ],
+        },
       };
     });
-    if (!getDemoState().cash) return { ok: false, reason: 'cash_closed' } as const;
+    const nextRemaining = serviceRemainingCents(
+      service,
+      getDemoState().localOrders,
+      getDemoState().payments,
+    );
+    return {
+      ok: true,
+      payment,
+      remainingCents: nextRemaining,
+      changeCents: payment.changeCents,
+    } as const;
+  },
+  closeService(tableId: string) {
+    const table = state.tables.find((item) => item.id === tableId);
+    const service = activeServiceFor(state.services, tableId);
+    if (!table || !service) return { ok: false, reason: 'not_found' } as const;
+    if (table.status !== 'awaiting_bill' || service.status !== 'awaiting_bill') {
+      return { ok: false, reason: 'bill_required' } as const;
+    }
+    const remaining = serviceRemainingCents(service, state.localOrders, state.payments);
+    if (remaining > 0) return { ok: false, reason: 'unpaid' } as const;
+    const closedAt = new Date().toISOString();
+    update((current) => ({
+      ...current,
+      activeTableId: current.activeTableId === tableId ? null : current.activeTableId,
+      tables: current.tables.map((item) =>
+        item.id === tableId
+          ? {
+              ...item,
+              status: 'available',
+              guests: 0,
+              billCents: 0,
+              openedAt: null,
+            }
+          : item,
+      ),
+      services: current.services.map((item) =>
+        item.id === service.id ? { ...item, status: 'closed', closedAt } : item,
+      ),
+    }));
     const closed = getDemoState().services.find((item) => item.id === service.id);
     if (closed?.status !== 'closed') return { ok: false, reason: 'invalid' } as const;
     return { ok: true } as const;

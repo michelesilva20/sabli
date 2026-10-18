@@ -11,6 +11,8 @@ import { pushToast } from '@/design-system/components/toast';
 import {
   activeServiceFor,
   demoSession,
+  paymentsForService,
+  serviceRemainingCents,
   useDemoSession,
   type LiveTable,
 } from '@/shared/demo/session';
@@ -172,6 +174,12 @@ export function DiningPage() {
   const openBill = session.tables.reduce((sum, table) => sum + table.billCents, 0);
   const selected = session.tables.find((table) => table.id === selectedId) ?? null;
   const selectedService = activeServiceFor(session.services, selected?.id);
+  const selectedRemaining = selectedService
+    ? serviceRemainingCents(selectedService, session.localOrders, session.payments)
+    : 0;
+  const hasPayments = selectedService
+    ? paymentsForService(session.payments, selectedService.id).length > 0
+    : false;
 
   return (
     <div className="grid gap-5">
@@ -333,14 +341,13 @@ export function DiningPage() {
             ) : null}
             {selected.status === 'awaiting_bill' ? (
               <Alert title="Conta solicitada" tone="warning">
-                A mesa aguarda pagamento. Novos itens exigem reabrir o atendimento. Encerrar no
-                caixa não quita sozinho — só libera a mesa com o turno aberto.
+                A mesa aguarda pagamento. Caixa aberto não quita sozinho. Novos itens exigem reabrir
+                o atendimento, se ainda não houver pagamento.
               </Alert>
             ) : null}
             {cashBlock ? (
-              <Alert title="Caixa fechado" tone="warning">
-                A quitação demonstrativa exige o caixa aberto. A mesa permanece ocupada até o
-                encerramento válido.
+              <Alert title="Conta não quitada" tone="warning">
+                Quite o saldo restante no caixa antes de liberar a mesa.
               </Alert>
             ) : null}
             <dl className="grid gap-2 text-sm">
@@ -376,6 +383,12 @@ export function DiningPage() {
                 <div className="flex justify-between">
                   <dt>Conta pedida</dt>
                   <dd>{formatDateTime(selectedService.requestedBillAt)}</dd>
+                </div>
+              ) : null}
+              {selected?.status === 'awaiting_bill' ? (
+                <div className="flex justify-between">
+                  <dt>Saldo restante</dt>
+                  <dd className="tabular font-extrabold">{formatBRL(selectedRemaining)}</dd>
                 </div>
               ) : null}
             </dl>
@@ -425,11 +438,11 @@ export function DiningPage() {
                   Pedir conta
                 </Button>
               ) : null}
-              {selected.status === 'awaiting_bill' ? (
+              {selected.status === 'awaiting_bill' && !hasPayments ? (
                 <Button
                   onClick={() => {
-                    demoSession.reopenService(selected.id);
-                    pushToast({ title: 'Atendimento reaberto para novos itens' });
+                    const ok = demoSession.reopenService(selected.id);
+                    if (ok) pushToast({ title: 'Atendimento reaberto para novos itens' });
                   }}
                 >
                   Reabrir atendimento
@@ -470,14 +483,13 @@ export function DiningPage() {
                         });
                         return;
                       }
-                      if (result.reason === 'cash_closed') {
+                      if (result.reason === 'unpaid') {
                         setCashBlock(true);
                         return;
                       }
                       pushToast({
                         title: 'Encerramento bloqueado',
-                        description:
-                          'Peça a conta e quite no caixa demonstrativo antes de liberar.',
+                        description: 'A mesa só é liberada com a conta solicitada e quitada.',
                         tone: 'danger',
                       });
                     }}

@@ -19,11 +19,15 @@ import {
   activeServiceFor,
   demoSession,
   ordersForService,
+  paymentsForService,
+  servicePaidCents,
+  serviceRemainingCents,
   useDemoSession,
   type LiveTable,
   type LocalOrder,
   type TableService,
 } from '@/shared/demo/session';
+import { PAYMENT_METHOD_LABEL } from '@/shared/domain/bill';
 import type { CatalogOrder } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
 
@@ -315,9 +319,15 @@ function CheckDetail({
   onBill: () => void;
   onReopen: () => void;
 }) {
+  const session = useDemoSession();
   const awaiting = table.status === 'awaiting_bill';
   const seedCents = service?.seedBalanceCents ?? 0;
   const sessionTotal = sessionOrders.reduce((sum, order) => sum + order.totalCents, 0);
+  const payments = service ? paymentsForService(session.payments, service.id) : [];
+  const paid = service ? servicePaidCents(session.payments, service.id) : 0;
+  const remaining = service
+    ? serviceRemainingCents(service, session.localOrders, session.payments)
+    : table.billCents;
   return (
     <div className="grid gap-5">
       <div className="flex items-start justify-between gap-3">
@@ -329,15 +339,25 @@ function CheckDetail({
         </div>
         <StatusBadge status={table.status} />
       </div>
-      {awaiting ? (
+      {awaiting && remaining > 0 ? (
         <Alert title="Conta pendente" tone="warning">
           A solicitação não quita a mesa. O histórico de consumo permanece até o encerramento no
           caixa.
         </Alert>
       ) : null}
+      {awaiting && remaining === 0 ? (
+        <Alert title="Conta quitada" tone="success">
+          Encerre no caixa para liberar a mesa. Os pedidos não serão alterados.
+        </Alert>
+      ) : null}
       <div>
         <p className="text-xs font-bold text-muted-foreground">Total da conta</p>
         <p className="mt-1 text-3xl font-extrabold tabular-nums">{formatBRL(table.billCents)}</p>
+        {awaiting ? (
+          <p className="mt-1 text-sm font-bold text-muted-foreground">
+            Pago {formatBRL(paid)} · restante {formatBRL(remaining)}
+          </p>
+        ) : null}
       </div>
       <dl className="grid grid-cols-3 gap-2">
         <Meta label="Pessoas" value={String(table.guests)} />
@@ -408,13 +428,27 @@ function CheckDetail({
           <p className="mt-1 text-sm font-bold">{preview}</p>
         </div>
       ) : null}
+      {payments.length > 0 ? (
+        <ul className="grid gap-1 text-sm">
+          {payments.map((payment) => (
+            <li key={payment.id} className="flex justify-between rounded-[12px] bg-muted px-3 py-2">
+              <span className="font-bold">{PAYMENT_METHOD_LABEL[payment.method]}</span>
+              <span className="tabular font-extrabold">{formatBRL(payment.appliedCents)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="grid gap-2">
         {awaiting ? (
           <>
-            <Button onClick={onCash}>Ir para o caixa</Button>
-            <Button variant="secondary" onClick={onReopen}>
-              Reabrir atendimento
+            <Button onClick={onCash}>
+              {remaining === 0 ? 'Encerrar no caixa' : 'Receber pagamento'}
             </Button>
+            {payments.length === 0 ? (
+              <Button variant="secondary" onClick={onReopen}>
+                Reabrir atendimento
+              </Button>
+            ) : null}
           </>
         ) : (
           <Button onClick={onBill}>Pedir conta</Button>

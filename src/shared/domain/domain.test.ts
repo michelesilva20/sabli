@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { splitBill } from '@/shared/domain/bill';
+import {
+  applyTender,
+  drawerCashCents,
+  remainingCents,
+  salesByMethod,
+  splitBill,
+} from '@/shared/domain/bill';
 import { formatBRL, percentOfCents } from '@/shared/domain/money';
 import { orderDiscountCents, orderTotalCents } from '@/shared/domain/order';
 import {
@@ -30,6 +36,53 @@ describe('dinheiro', () => {
   it('divide a conta sem perder centavos', () => {
     expect(splitBill(100, 3)).toEqual([34, 33, 33]);
     expect(splitBill(100, 3).reduce((total, part) => total + part, 0)).toBe(100);
+  });
+
+  it('calcula o saldo restante sem ir abaixo de zero', () => {
+    expect(remainingCents(10000, 4000)).toBe(6000);
+    expect(remainingCents(10000, 10000)).toBe(0);
+    expect(remainingCents(10000, 12000)).toBe(0);
+  });
+
+  it('aplica dinheiro com troco sem inflar o valor pago', () => {
+    expect(applyTender({ remainingCents: 10000, method: 'cash', tenderedCents: 12000 })).toEqual({
+      ok: true,
+      appliedCents: 10000,
+      tenderedCents: 12000,
+      changeCents: 2000,
+    });
+  });
+
+  it('recusa eletrônico acima do restante', () => {
+    expect(applyTender({ remainingCents: 10000, method: 'pix', tenderedCents: 12000 })).toEqual({
+      ok: false,
+      reason: 'over_remaining',
+    });
+  });
+
+  it('recusa pagamento de conta já quitada', () => {
+    expect(applyTender({ remainingCents: 0, method: 'cash', tenderedCents: 100 })).toEqual({
+      ok: false,
+      reason: 'settled',
+    });
+  });
+
+  it('separa a gaveta de espécie das vendas eletrônicas', () => {
+    const movements = [
+      { type: 'opening' as const, amountCents: 20000, method: 'cash' as const },
+      { type: 'sale' as const, amountCents: 10000, method: 'cash' as const },
+      { type: 'sale' as const, amountCents: 5000, method: 'pix' as const },
+      { type: 'sale' as const, amountCents: 3000, method: 'credit' as const },
+      { type: 'out' as const, amountCents: 2000, method: 'cash' as const },
+    ];
+    expect(drawerCashCents(movements)).toBe(28000);
+    expect(salesByMethod(movements)).toEqual({
+      pix: 5000,
+      credit: 3000,
+      debit: 0,
+      cash: 10000,
+      voucher: 0,
+    });
   });
 });
 

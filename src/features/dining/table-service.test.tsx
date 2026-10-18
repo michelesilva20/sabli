@@ -181,17 +181,26 @@ describe('atendimento por mesa', () => {
     expect(activeServiceFor(getDemoState().services, 't01')?.requestedBillAt).toBeTruthy();
   });
 
-  it('impede liberação sem encerramento válido no caixa', () => {
+  it('impede liberação sem quitação da conta', () => {
     demoSession.openTable('t01', 2);
     expect(demoSession.closeService('t01')).toEqual({ ok: false, reason: 'bill_required' });
+    demoSession.selectTable('t01');
+    addCola();
+    demoSession.sendToKitchen();
     demoSession.requestBill('t01');
-    expect(demoSession.closeService('t01')).toEqual({ ok: false, reason: 'cash_closed' });
-    expect(table('t01').status).toBe('awaiting_bill');
+    expect(demoSession.closeService('t01')).toEqual({ ok: false, reason: 'unpaid' });
     demoSession.openCash({
       operator: 'Carlos Mendes',
       openingFloatCents: 20000,
       note: '',
     });
+    expect(demoSession.closeService('t01')).toEqual({ ok: false, reason: 'unpaid' });
+    expect(table('t01').status).toBe('awaiting_bill');
+    const paid = demoSession.payBill('t01', {
+      method: 'pix',
+      tenderedCents: table('t01').billCents,
+    });
+    expect(paid.ok).toBe(true);
     expect(demoSession.closeService('t01').ok).toBe(true);
     expect(table('t01').status).toBe('available');
     expect(table('t01').billCents).toBe(0);
