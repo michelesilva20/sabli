@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Sabli by Emilabs — seu negócio inteiro, em um só lugar." />
+    <meta name="color-scheme" content="light dark" />
+    <title>Sabli — Seu negócio inteiro. Em um só lugar.</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('sabli-theme');
+          var mode =
+            stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var dark = mode === 'dark' || (mode === 'system' && systemDark);
+          var root = document.documentElement;
+          root.classList.toggle('dark', dark);
+          root.dataset.theme = mode;
+          root.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (error) {
+          /* preferência indisponível no primeiro paint */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
