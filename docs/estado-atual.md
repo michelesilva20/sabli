@@ -1,10 +1,10 @@
 # Estado atual do Sabli
 
-Este documento descreve o ponto da fundação de frontend para continuar o trabalho. Não substitui as outras referências: [design system](design-system.md), [arquitetura](frontend-architecture.md), [telas](screens.md) e [API futura](future-api-integration.md).
+Este documento descreve o ponto atual para continuar o trabalho. Não substitui as outras referências: [design system](design-system.md), [arquitetura](frontend-architecture.md), [telas](screens.md), [API futura](future-api-integration.md) e [backend](backend.md).
 
 ## Em uma frase
 
-O Sabli é o frontend demonstrativo da plataforma SaaS da Emilabs para restaurantes e pizzarias. A interface está montada, o visual da operação avançou em algumas telas, e ainda não existe backend.
+O Sabli é a plataforma SaaS da Emilabs para restaurantes e pizzarias. O frontend demonstrativo está na `main`. A API Java tem só a fundação técnica: saúde, segurança restritiva, PostgreSQL de teste e Flyway. Ainda não há identidade nem operações de negócio.
 
 Slogan: **Seu negócio inteiro. Em um só lugar.**
 
@@ -21,24 +21,16 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 
 ## O que esta versão não é
 
-Não há API Java, autenticação, permissões reais, pagamento de adquirente, persistência operacional, fiscal, delivery, reservas completas nem sincronização de KDS. Não inventar esses fluxos nem simulá-los como se já existissem.
+Não há autenticação, permissões reais, pagamento de adquirente, persistência operacional no SPA, fiscal, delivery, reservas completas nem sincronização de KDS. A API em `apps/api` não substitui a sessão demonstrativa. Não inventar esses fluxos nem simulá-los como se já existissem.
 
 Esconder um módulo em Configurações só tira o item da navegação. A rota continua existindo.
 
 ## Onde o código vive
 
 ```text
-src/
-├── app/             providers, rotas, layouts e preferências de interface
-├── design-system/   Sabli UI (tokens e primitives, sem regra de negócio)
-├── features/        uma pasta por tela ou fluxo
-├── shared/
-│   ├── api/         porta SabliDataSource e hooks
-│   ├── demo/        sessão local do operador
-│   ├── domain/      cálculos puros (dinheiro, pizza, conta, cozinha)
-│   ├── mocks/       fixtures da Pizzaria do Centro
-│   └── types/       contratos de domínio
-└── main.tsx
+src/                 SPA React (inalterado neste checkpoint)
+apps/api/            fundação Spring Boot
+.github/workflows/   CI
 ```
 
 Componentes visuais não importam fixtures e não chamam HTTP. Dados entram por hooks ou pela sessão demonstrativa.
@@ -91,9 +83,7 @@ Estabelecimento de exemplo: Pizzaria do Centro. Operadora de exemplo: Mariana Al
 
 ## Git e entrega
 
-Trabalho atual na branch `feat/plataforma-ui`, PR https://github.com/michelesilva20/sabli/pull/1, base `main`.
-
-Entregas recentes nessa linha: fundação da plataforma, documentação, KDS alinhado ao tema do painel e tela de perfil.
+Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API segue em branch própria, com PR para `main`.
 
 ## Como rodar
 
@@ -113,18 +103,9 @@ App em `http://127.0.0.1:5173/`. Node 22+ e npm 11+.
 
 ## Como continuar
 
-A fundação de rotas e fluxos já existe. O próximo passo útil é escolher **uma tela ou um contrato**, sem abrir autenticação nem API.
+A fundação da API existe. O próximo checkpoint (2.0B) é identidade, organizações, estabelecimentos e isolamento multi-tenant.
 
-Candidatas naturais, ainda na qualidade da fundação:
-
-- PDV e montador de pizza
-- Mapa de mesas
-- Caixa
-- Relatórios
-- Equipe e configurações
-- Atendimento do garçom (`/atendimento`)
-
-Quando a API Java existir, a troca prevista é substituir `mockDataSource` por um cliente HTTP com os mesmos métodos. As escritas da sessão viram comandos no servidor. Até lá, o navegador não é fonte da verdade operacional.
+O SPA continua falando com fixtures e com `demo/session.ts`. Não ligar o React à API antes desses contratos existirem no Java.
 
 ## Referência visual
 

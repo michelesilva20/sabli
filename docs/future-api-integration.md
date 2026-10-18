@@ -1,6 +1,6 @@
 # Integração futura com a API Java
 
-O backend Spring Boot ainda não existe. O frontend conversa com `SabliDataSource` em `src/shared/api/data-source.ts`. A implementação atual devolve fixtures com um atraso curto.
+A fundação Spring Boot está em `apps/api`. Ela ainda não expõe operações de negócio. O frontend continua em `SabliDataSource` (`src/shared/api/data-source.ts`) com fixtures e atraso curto.
 
 Quando a API existir, a troca prevista é substituir `mockDataSource` por um cliente HTTP, mantendo os mesmos métodos e os tipos de `src/shared/types/domain.ts`.
 
