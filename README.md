@@ -46,6 +46,7 @@ A referência visual aprovada está em `Montagem UI SaaS para Pizzaria.png`.
 
 ## Documentação
 
+- [Estado atual](docs/estado-atual.md)
 - [Design system](docs/design-system.md)
 - [Arquitetura](docs/frontend-architecture.md)
 - [Telas](docs/screens.md)
