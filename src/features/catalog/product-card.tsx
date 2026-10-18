@@ -22,18 +22,19 @@ export function ProductCatalogCard({
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-card transition duration-150 hover:-translate-y-0.5 hover:shadow-pop motion-reduce:transform-none',
+        'overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-card transition duration-150 hover:-translate-y-0.5 hover:border-primary-action/40 hover:shadow-pop motion-reduce:transform-none',
+        !available && 'opacity-80',
       )}
     >
       <div className="relative">
         <ProductArt image={product.image} available={available} />
         {!available ? (
-          <span className="absolute top-3 left-3">
+          <span className="absolute top-2.5 left-2.5">
             <Badge tone="neutral">Indisponível</Badge>
           </span>
         ) : null}
       </div>
-      <div className="grid gap-3 p-4">
+      <div className="grid gap-2.5 p-3">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-extrabold">{product.name}</h3>
           <p className="mt-0.5 line-clamp-2 text-xs font-semibold text-muted-foreground">
@@ -41,13 +42,15 @@ export function ProductCatalogCard({
           </p>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <p className="tabular text-base font-extrabold">{formatBRL(product.priceCents)}</p>
+          <p className="tabular text-lg leading-none font-extrabold">
+            {formatBRL(product.priceCents)}
+          </p>
           {showAdd ? (
             <button
               type="button"
               disabled={!available}
               onClick={onAdd}
-              className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-primary-action text-primary-action-foreground disabled:bg-muted disabled:text-muted-foreground"
+              className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-primary-action text-primary-action-foreground transition duration-150 hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground motion-reduce:transition-none"
               aria-label={available ? `Adicionar ${product.name}` : `${product.name} indisponível`}
             >
               <Plus className="size-4" aria-hidden />

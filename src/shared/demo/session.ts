@@ -280,7 +280,11 @@ export const demoSession = {
     notes?: string;
     pizza?: PizzaComposition;
     productId?: string;
+    quantity?: number;
   }) {
+    const quantity = Number.isFinite(input.quantity)
+      ? Math.min(99, Math.max(1, Math.trunc(input.quantity as number)))
+      : 1;
     update((current) => ({
       ...current,
       lines: [
@@ -289,7 +293,7 @@ export const demoSession = {
           id: crypto.randomUUID(),
           productId: input.productId,
           name: input.name,
-          quantity: 1,
+          quantity,
           unit: 'un',
           unitPriceCents: input.unitPriceCents,
           notes: input.notes?.trim() || undefined,

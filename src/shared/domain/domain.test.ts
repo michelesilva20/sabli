@@ -8,7 +8,13 @@ import {
   kitchenStatusToOrderStatus,
   nextKitchenStatus,
 } from '@/shared/domain/kitchen';
-import { calculatePizzaPrice, canAddFlavor, equalPortions, sizeById } from '@/shared/domain/pizza';
+import {
+  calculatePizzaPrice,
+  canAddFlavor,
+  equalPortions,
+  flavorPriceForSize,
+  sizeById,
+} from '@/shared/domain/pizza';
 
 describe('dinheiro', () => {
   it('formata centavos em real', () => {
@@ -75,6 +81,14 @@ describe('pizza', () => {
       strategy: 'highest',
     });
     expect(result.flavorsCents).toBe(Math.round((6790 * 4) / 5));
+  });
+
+  it('escala o preço do sabor para cada tamanho', () => {
+    const grande = 5890;
+    expect(flavorPriceForSize(grande, sizeById('grande'))).toBe(5890);
+    expect(flavorPriceForSize(grande, sizeById('broto'))).toBe(Math.round((5890 * 3) / 5));
+    expect(flavorPriceForSize(grande, sizeById('media'))).toBe(Math.round((5890 * 4) / 5));
+    expect(flavorPriceForSize(grande, sizeById('familia'))).toBe(Math.round((5890 * 7) / 5));
   });
 
   it('recusa frações que não fecham a pizza', () => {

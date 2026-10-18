@@ -83,7 +83,7 @@ export function equalPortions(flavorIds: string[]): FlavorPortion[] {
   return flavorIds.map((flavorId) => ({ flavorId, numerator: 1, denominator }));
 }
 
-function scaleToSize(grandePriceCents: number, size: PizzaSizeRule): number {
+export function flavorPriceForSize(grandePriceCents: number, size: PizzaSizeRule): number {
   return Math.round((grandePriceCents * size.factorNumerator) / size.factorDenominator);
 }
 
@@ -108,7 +108,7 @@ export function calculatePizzaPrice(input: PizzaPriceInput): PizzaPriceResult {
   const scaled = input.portions.map((portion) => {
     const grandePrice = input.flavorPrices[portion.flavorId];
     if (grandePrice === undefined) throw new Error('Sabor não encontrado.');
-    return { portion, priceCents: scaleToSize(grandePrice, input.size) };
+    return { portion, priceCents: flavorPriceForSize(grandePrice, input.size) };
   });
 
   const flavorsCents =

@@ -5,7 +5,7 @@ export function ProductArt({ image, available }: { image: string; available: boo
   const [failed, setFailed] = useState(false);
 
   return (
-    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+    <div className="relative aspect-[16/10] overflow-hidden bg-muted">
       {failed ? null : (
         <img
           src={image}
