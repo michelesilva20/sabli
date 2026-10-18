@@ -5,14 +5,14 @@ import { demoSession, useDemoSession, type LiveTicket } from '@/shared/demo/sess
 import { cn } from '@/shared/utils/cn';
 
 const columnAccent: Record<string, string> = {
-  waiting: 'bg-[#FF7055]',
-  preparing: 'bg-[#9278FF]',
-  ready: 'bg-[#3DBE78]',
-  delivered: 'bg-[#6B6574]',
+  waiting: 'bg-primary-action',
+  preparing: 'bg-secondary',
+  ready: 'bg-success',
+  delivered: 'bg-muted-foreground',
 };
 
 const actionClass: Record<string, string> = {
-  waiting: 'bg-primary-action text-primary-action-foreground hover:brightness-110',
+  waiting: 'bg-primary-action text-primary-action-foreground hover:bg-primary-hover',
   preparing: 'bg-accent text-accent-foreground hover:brightness-105',
   ready: 'bg-success text-success-foreground hover:brightness-110',
 };
@@ -34,8 +34,8 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
     <article
       className={cn(
         'relative overflow-hidden rounded-[20px] border bg-card p-4 shadow-card',
-        tone === 'late' ? 'border-[#FF7055]/50' : 'border-white/8',
-        ticket.priority === 'high' && !done ? 'ring-1 ring-[#FF7055]/40' : null,
+        tone === 'late' ? 'border-primary-action/40' : 'border-border/70',
+        ticket.priority === 'high' && !done ? 'ring-1 ring-primary-action/30' : null,
         done && 'opacity-70',
       )}
     >
@@ -46,7 +46,7 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
       <header className="flex items-start justify-between gap-3 pl-2">
         <div className="min-w-0">
           <p className="text-2xl leading-none font-extrabold tracking-tight">#{ticket.number}</p>
-          <p className="mt-2 inline-flex rounded-full bg-white/8 px-2.5 py-1 text-xs font-extrabold text-[#E8E1F0]">
+          <p className="mt-2 inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-extrabold">
             {ticket.origin}
           </p>
         </div>
@@ -54,19 +54,19 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
           <p
             className={cn(
               'tabular text-lg leading-none font-extrabold',
-              tone === 'late' && 'text-[#FF7055]',
-              tone === 'aging' && 'text-[#F5C16C]',
-              tone === 'fresh' && 'text-[#D9D2E2]',
+              tone === 'late' && 'text-primary-action',
+              tone === 'aging' && 'text-warning',
+              tone === 'fresh' && 'text-muted-foreground',
             )}
           >
             {elapsedLabel(ticket.createdAt, now)}
           </p>
           {ticket.priority === 'high' && !done ? (
-            <p className="mt-2 text-xs font-extrabold tracking-wide text-[#FF7055] uppercase">
+            <p className="mt-2 text-xs font-extrabold tracking-wide text-primary-action uppercase">
               Prioridade
             </p>
           ) : (
-            <p className="mt-2 text-xs font-bold text-[#8E8798]">
+            <p className="mt-2 text-xs font-bold text-muted-foreground">
               {done ? 'Concluído' : minutes < 8 ? 'No tempo' : 'Em fila'}
             </p>
           )}
@@ -75,13 +75,13 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
       <ul className="mt-4 grid gap-2.5 pl-2">
         {ticket.items.map((item) => (
           <li key={`${ticket.id}-${item.name}`} className="flex items-start gap-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-white/10 text-sm font-extrabold">
+            <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-muted text-sm font-extrabold">
               {item.quantity}
             </span>
             <span className="min-w-0 pt-0.5">
               <span className="block text-[15px] leading-snug font-extrabold">{item.name}</span>
               {item.notes ? (
-                <span className="mt-0.5 block text-xs font-semibold text-[#A89FB0]">
+                <span className="mt-0.5 block text-xs font-semibold text-muted-foreground">
                   {item.notes}
                 </span>
               ) : null}
@@ -94,16 +94,14 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
           type="button"
           onClick={() => demoSession.advanceTicket(ticket.id)}
           className={cn(
-            'mt-4 h-12 w-full rounded-[14px] text-sm font-extrabold transition-[filter] duration-150',
+            'mt-4 h-12 w-full rounded-[14px] text-sm font-extrabold transition-[filter,background-color] duration-150',
             actionClass[ticket.status],
           )}
         >
           {action}
         </button>
       ) : (
-        <p className="mt-4 pl-2 text-xs font-extrabold text-[#7EE0A8]">
-          Entregue nesta demonstração
-        </p>
+        <p className="mt-4 pl-2 text-xs font-extrabold text-success">Entregue nesta demonstração</p>
       )}
     </article>
   );
@@ -132,7 +130,7 @@ export function KitchenPage() {
           type="button"
           className={cn(
             'rounded-full px-3 py-2 text-sm font-extrabold',
-            focus === 'all' ? 'bg-white text-[#12111A]' : 'bg-white/8',
+            focus === 'all' ? 'bg-foreground text-background' : 'border border-border bg-card',
           )}
           onClick={() => setFocus('all')}
         >
@@ -147,7 +145,7 @@ export function KitchenPage() {
               onClick={() => setFocus(status)}
               className={cn(
                 'inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-extrabold',
-                focus === status ? 'bg-white text-[#12111A]' : 'bg-white/8',
+                focus === status ? 'bg-foreground text-background' : 'border border-border bg-card',
               )}
             >
               <span className={cn('size-2 rounded-full', columnAccent[status])} aria-hidden />
@@ -175,20 +173,20 @@ export function KitchenPage() {
             <section
               key={status}
               aria-label={KITCHEN_STATUS_LABEL[status]}
-              className="min-h-[70vh] rounded-[24px] bg-surface p-3"
+              className="min-h-[70vh] rounded-[24px] bg-surface-muted p-3"
             >
               <h2 className="mb-3 flex items-center justify-between gap-2 px-1 text-sm font-extrabold">
                 <span className="inline-flex items-center gap-2">
                   <span className={cn('size-2.5 rounded-full', columnAccent[status])} aria-hidden />
                   {KITCHEN_STATUS_LABEL[status]}
                 </span>
-                <span className="tabular rounded-full bg-white/8 px-2 py-0.5 text-xs">
+                <span className="tabular rounded-full bg-card px-2 py-0.5 text-xs text-muted-foreground">
                   {tickets.length}
                 </span>
               </h2>
               <div className="grid content-start gap-3">
                 {tickets.length === 0 ? (
-                  <p className="rounded-[16px] border border-dashed border-white/10 px-3 py-8 text-center text-sm font-semibold text-[#8E8798]">
+                  <p className="rounded-[16px] border border-dashed border-border px-3 py-8 text-center text-sm font-semibold text-muted-foreground">
                     Fila livre
                   </p>
                 ) : (

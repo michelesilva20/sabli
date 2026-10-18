@@ -11,7 +11,7 @@ Nada nesta lista persiste em servidor. Onde uma ação muda a tela, a mudança v
 | `/pdv/montar-pizza` | Montador      | Tamanho, sabores, frações iguais, borda, adicionais, observação, revisão e inclusão no pedido.                                                        |
 | `/comandas`         | Comandas      | Contas parciais das mesas ocupadas ou aguardando conta.                                                                                               |
 | `/produtos`         | Produtos      | Cardápio e disponibilidade local.                                                                                                                     |
-| `/cozinha`          | KDS           | Tema operacional escuro. Avanço explícito entre aguardando, preparo, pronto e entregue. O indicador diz Demonstração.                                 |
+| `/cozinha`          | KDS           | Segue o tema do painel. Avanço explícito entre aguardando, preparo, pronto e entregue. O indicador diz Demonstração.                                  |
 | `/caixa`            | Caixa         | Abertura com validação, lançamentos, divisão de conta e fechamento. Pagamentos são simulados e não coletam cartão.                                    |
 | `/relatorios`       | Relatórios    | Mesma base ilustrativa do painel, com aviso de que não é fechamento.                                                                                  |
 | `/equipe`           | Equipe        | Lista de exemplo e inclusão local, sem convite.                                                                                                       |

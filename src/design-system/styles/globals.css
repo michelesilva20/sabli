@@ -137,26 +137,6 @@
   color-scheme: dark;
 }
 
-.kds {
-  --background: #0e0d14;
-  --foreground: #f7f3f8;
-  --card: #1b1823;
-  --card-foreground: #f7f3f8;
-  --popover: #221f2b;
-  --popover-foreground: #f7f3f8;
-  --primary-action: #ff7055;
-  --primary-action-foreground: #28212c;
-  --muted: #2a2633;
-  --muted-foreground: #b9b1c0;
-  --border: #3a3544;
-  --surface: #14131b;
-  --surface-muted: #1f1c27;
-  --surface-elevated: #25222e;
-  --shadow-card: 0 12px 28px rgba(4, 3, 10, 0.45);
-  color: var(--foreground);
-  background: var(--background);
-}
-
 @layer base {
   html {
     font-family: var(--font-sans);
