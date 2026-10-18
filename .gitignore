@@ -10,5 +10,10 @@ blob-report
 *.local
 .env
 .env.*
+!.env.example
+!apps/api/.env.example
 .DS_Store
 *.tsbuildinfo
+apps/api/target/
+.idea/
+*.iml

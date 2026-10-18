@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: ${SABLI_DATASOURCE_URL}
+    username: ${SABLI_DATASOURCE_USERNAME}
+    password: ${SABLI_DATASOURCE_PASSWORD}
+
+springdoc:
+  api-docs:
+    enabled: ${SABLI_OPENAPI_ENABLED:false}
