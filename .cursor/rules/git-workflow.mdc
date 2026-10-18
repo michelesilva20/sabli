@@ -1,0 +1,53 @@
+---
+description: Branches, commits e PRs no padrão Git/GitHub conforme o trabalho avança
+alwaysApply: true
+---
+
+# Git e GitHub
+
+Commitar e abrir branch no fim de cada entrega coerente. Não esperar o usuário pedir. Push da branch depois do commit. PR na primeira vez que a branch for para o remoto.
+
+## Branch
+
+- Trabalho novo sai de `main` atualizada. Nunca commitar direto em `main`.
+- Uma branch por assunto. Nome em kebab-case, com prefixo:
+
+```
+feat/orders-queue
+fix/format-brl
+refactor/dining-map
+ui/catalog-photos
+chore/git-rules
+```
+
+- Reusar a branch da conversa se o assunto for o mesmo. Abrir outra só quando o tema mudar.
+
+## Commit
+
+- Um commit = uma intenção. Separar tela, correção e chore.
+- Conventional Commits, em português, no imperativo. Título até 72 caracteres, focado no porquê:
+
+```
+feat(comandas): transformar a lista em fila de contas
+fix(pedidos): evitar R$ duplicado no total
+ui(produtos): usar fotos reais nos cards do cardápio
+```
+
+Tipos: `feat`, `fix`, `ui`, `refactor`, `docs`, `test`, `chore`.
+
+- Incluir só arquivos da mudança. Não commitar `.env`, secrets, `node_modules`, `dist` nem dumps temporários.
+- Mensagem via HEREDOC. Não usar `--no-verify`, `--amend` nem force push em `main`.
+
+## GitHub
+
+- Push com `-u` na primeira vez. PR pequeno, com resumo e plano de teste.
+- Base da PR é `main`. Não squash/merge por conta própria.
+
+## Depois de uma tela ou correção
+
+1. `git status` + `git diff` + `git log -5`
+2. Se estiver em `main`, criar `feat/...` (ou o prefixo certo) antes de adicionar arquivos
+3. `git add` só o relevante e commit no formato acima
+4. `git status` para confirmar
+5. `git push -u origin HEAD` na primeira vez; `git push` depois
+6. Se ainda não houver PR da branch, abrir com `gh pr create`
