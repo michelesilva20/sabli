@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 
 test('painel, tema e inclusão de produto no PDV', async ({ page }) => {
   await page.goto('/inicio');
-  await expect(page.getByRole('heading', { name: /mariana/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início' })).toBeVisible();
+  await expect(page.getByText(/mariana\./i)).toBeVisible();
 
   await page.getByRole('radio', { name: 'Escuro' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
