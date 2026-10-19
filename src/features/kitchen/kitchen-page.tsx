@@ -10,6 +10,8 @@ import {
 } from '@/shared/domain/kitchen';
 import { elapsedLabel, elapsedMinutes } from '@/shared/domain/date';
 import { OrderItemComposition } from '@/features/ordering/order-item-composition';
+import { ApiKitchenPage } from '@/features/kitchen/api-kitchen-page';
+import { isApiMode } from '@/shared/config/runtime';
 import { demoSession, useDemoSession, type LiveTicket } from '@/shared/demo/session';
 import { cn } from '@/shared/utils/cn';
 
@@ -136,6 +138,11 @@ function Ticket({ ticket, now }: { ticket: LiveTicket; now: number }) {
 }
 
 export function KitchenPage() {
+  if (isApiMode()) return <ApiKitchenPage />;
+  return <DemoKitchenPage />;
+}
+
+function DemoKitchenPage() {
   const session = useDemoSession();
   const [now, setNow] = useState(() => Date.now());
   const [focus, setFocus] = useState<(typeof KITCHEN_FLOW)[number] | 'all'>('all');

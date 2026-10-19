@@ -5,6 +5,7 @@ import { appQueryClient } from '@/shared/api/query-client';
 import { installSessionRefresh, resetAuthSession } from '@/shared/auth/session';
 import { configureRuntimeForTests } from '@/shared/config/runtime';
 import { resetDemoSession } from '@/shared/demo/session';
+import { resetOrderDraft } from '@/shared/orders/order-draft';
 
 const originalFetch = globalThis.fetch;
 
@@ -25,6 +26,7 @@ Object.defineProperty(window, 'matchMedia', {
 afterEach(() => {
   cleanup();
   resetDemoSession();
+  resetOrderDraft();
   resetAuthSession();
   installSessionRefresh();
   configureRuntimeForTests(null);

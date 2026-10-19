@@ -11,6 +11,7 @@ import { ApiError, ApiUnavailableError, apiRequest, registerAccessRefresh } from
 import { appQueryClient } from '@/shared/api/query-client';
 import { isApiMode } from '@/shared/config/runtime';
 import { readAccessToken, writeAccessToken } from '@/shared/auth/token-memory';
+import { resetOrderDraft } from '@/shared/orders/order-draft';
 
 export type AuthStatus = 'boot' | 'restoring' | 'anonymous' | 'authenticated' | 'expired';
 
@@ -189,6 +190,7 @@ export async function logout(): Promise<void> {
     // A sessão local é encerrada mesmo se a revogação remota falhar.
   } finally {
     writeAccessToken(null);
+    resetOrderDraft();
     appQueryClient.clear();
     emit({ ...initialSnapshot(), status: 'anonymous' });
   }
@@ -298,6 +300,15 @@ export function canOperateDining(context: ContextResponse | null): boolean {
   if (canManageDining(context)) return true;
   const role = context?.establishmentRole;
   return role === 'CASHIER' || role === 'WAITER';
+}
+
+export function canPlaceOrder(context: ContextResponse | null): boolean {
+  return canOperateDining(context);
+}
+
+export function canAdvanceKitchen(context: ContextResponse | null): boolean {
+  if (canManageDining(context)) return true;
+  return context?.establishmentRole === 'KITCHEN';
 }
 
 export function firstNameFrom(name: string | undefined): string {

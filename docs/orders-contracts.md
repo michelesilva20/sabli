@@ -1,6 +1,6 @@
 # Contratos de pedidos e KDS (Java ↔ TypeScript)
 
-O SPA ainda usa `demo/session.ts` e fixtures. Não substitua o data source neste checkpoint.
+O modo DEMO continua em `demo/session.ts`. No modo API, o SPA confirma pedidos com `POST /orders` e acompanha a produção em `GET /kitchen/tickets`.
 
 ## Fonte da verdade
 
@@ -28,6 +28,8 @@ O cliente envia IDs e quantidades. O servidor recalcula:
 - pizza: motor do 2.0C (`HIGHEST` / `AVERAGE`, borda, adicionais, half-up).
 
 Alterar o catálogo depois **não** muda o pedido histórico.
+
+A cotação de pizza não reserva preço. `PlaceOrderRequest.expectedTotalCents` é opcional: se o total do servidor divergir, a API responde `409 PRICE_CHANGED` com `actualTotalCents` **antes** de persistir. O operador confirma o valor atual na mesma tentativa lógica (mesma `Idempotency-Key`).
 
 ## Mapeamento
 

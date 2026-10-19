@@ -1,5 +1,7 @@
 package dev.emilabs.sabli.shared.error;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 
 public class ApiException extends RuntimeException {
@@ -7,6 +9,7 @@ public class ApiException extends RuntimeException {
   private final HttpStatus status;
   private final String title;
   private final String code;
+  private final Map<String, Object> properties = new LinkedHashMap<>();
 
   public ApiException(HttpStatus status, String title, String code, String detail) {
     super(detail);
@@ -25,6 +28,15 @@ public class ApiException extends RuntimeException {
 
   public String code() {
     return code;
+  }
+
+  public Map<String, Object> properties() {
+    return properties;
+  }
+
+  public ApiException property(String key, Object value) {
+    properties.put(key, value);
+    return this;
   }
 
   public static ApiException unauthorized() {
@@ -75,5 +87,15 @@ public class ApiException extends RuntimeException {
         "Versão desatualizada",
         "STALE_VERSION",
         "O registro foi alterado por outra operação. Recarregue e tente de novo.");
+  }
+
+  public static ApiException priceChanged(int expectedTotalCents, int actualTotalCents) {
+    return new ApiException(
+            HttpStatus.CONFLICT,
+            "Preço atualizado",
+            "PRICE_CHANGED",
+            "O total do servidor é diferente da cotação exibida.")
+        .property("expectedTotalCents", expectedTotalCents)
+        .property("actualTotalCents", actualTotalCents);
   }
 }

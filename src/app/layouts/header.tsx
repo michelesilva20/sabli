@@ -1,6 +1,8 @@
 import { Bell, Menu, Store } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { Button } from '@/design-system/components/button';
+import { Dialog } from '@/design-system/components/dialog';
 import { businessNavigation } from '@/app/config/navigation';
 import { SidebarNav } from '@/app/layouts/sidebar';
 import { useUiStore } from '@/app/stores/ui-store';
@@ -21,6 +23,7 @@ import { SearchInput } from '@/design-system/components/input';
 import { Sheet } from '@/design-system/components/sheet';
 import { ThemeSwitcher } from '@/design-system/components/theme-switcher';
 import { pushToast } from '@/design-system/components/toast';
+import { draftBlocksEstablishmentSwitch, resetOrderDraft } from '@/shared/orders/order-draft';
 import { cn } from '@/shared/utils/cn';
 
 export function AppHeader() {
@@ -35,6 +38,9 @@ export function AppHeader() {
   const session = useDemoSession();
   const auth = useAuthSession();
   const apiPlaces = auth.me?.establishments ?? [];
+  const [pendingPlace, setPendingPlace] = useState<{ organizationId: string; id: string; name: string } | null>(
+    null,
+  );
   const displayName = isApiMode() ? (auth.me?.user.name ?? 'Conta') : session.profile.name;
   const displayFirstName = isApiMode()
     ? firstNameFrom(auth.me?.user.name)
@@ -167,6 +173,14 @@ export function AppHeader() {
                     id: item.id,
                     label: item.name,
                     onSelect: () => {
+                      if (draftBlocksEstablishmentSwitch(item.id)) {
+                        setPendingPlace({
+                          organizationId: item.organizationId,
+                          id: item.id,
+                          name: item.name,
+                        });
+                        return;
+                      }
                       void selectEstablishment(item.organizationId, item.id).then(
                         () =>
                           pushToast({
@@ -320,6 +334,45 @@ export function AppHeader() {
       >
         <SidebarNav onNavigate={() => setMobileOpen(false)} />
       </Sheet>
+      <Dialog
+        open={Boolean(pendingPlace)}
+        onOpenChange={(open) => {
+          if (!open) setPendingPlace(null);
+        }}
+        title="Descartar o rascunho?"
+        description="Há itens não confirmados neste estabelecimento. Eles não são salvos no navegador."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPendingPlace(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingPlace) return;
+                resetOrderDraft();
+                const next = pendingPlace;
+                setPendingPlace(null);
+                void selectEstablishment(next.organizationId, next.id).then(
+                  () =>
+                    pushToast({
+                      title: next.name,
+                      description: 'Contexto autorizado pelo servidor.',
+                    }),
+                  () =>
+                    pushToast({
+                      title: 'Contexto recusado',
+                      description: 'O servidor não autorizou este estabelecimento.',
+                    }),
+                );
+              }}
+            >
+              Descartar e trocar
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">Cancelar mantém o rascunho e o estabelecimento atual.</p>
+      </Dialog>
     </header>
   );
 }

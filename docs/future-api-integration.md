@@ -5,7 +5,7 @@ A API em `apps/api` autentica e persiste catálogo, mesas, pedidos/KDS, comandas
 | Modo | `VITE_SABLI_MODE` | Dados |
 | ---- | ----------------- | ----- |
 | DEMO | `demo` (padrão) | `SabliDataSource` + `demo/session.ts` |
-| API | `api` | Cliente HTTP + sessão em memória. Catálogo e mesas ligados; pedidos, cozinha e caixa ainda não |
+| API | `api` | Cliente HTTP + sessão em memória. Catálogo, mesas, pedidos e KDS ligados; caixa ainda não |
 
 `VITE_SABLI_API_BASE_URL` aponta para `http://127.0.0.1:8080` no desenvolvimento.
 
@@ -27,7 +27,15 @@ Access token só em memória. Refresh só no cookie `sabli_refresh`. CORS com cr
 
 ## Ainda não ligado
 
-Quando o modo API abre pedidos, cozinha, comandas, caixa, relatórios ou equipe, a tela declara que o módulo ainda não está disponível. Produtos, a consulta do PDV e o mapa de mesas usam o backend. Fixtures não aparecem como dados reais. Encerrar atendimento e consumo da comanda continuam fora desta etapa.
+Quando o modo API abre comandas, caixa, relatórios ou equipe, a tela declara que o módulo ainda não está disponível. Produtos, PDV, pedidos, cozinha e o mapa de mesas usam o backend. Fixtures não aparecem como dados reais. Encerrar atendimento e consumo da comanda continuam fora desta etapa.
+
+Pedidos ligados:
+
+- `POST/GET /api/v1/establishments/{id}/orders`
+- `GET /api/v1/establishments/{id}/orders/{orderId}`
+- `GET /api/v1/establishments/{id}/kitchen/tickets` (`includeComposition=true`)
+- `POST .../kitchen/tickets/{id}/advance`
+- `POST .../kitchen/tickets/{id}/items/{itemId}/advance`
 
 O mapeamento operacional continua em [catalog-contracts.md](catalog-contracts.md), [dining-contracts.md](dining-contracts.md), [orders-contracts.md](orders-contracts.md) e [billing-contracts.md](billing-contracts.md).
 

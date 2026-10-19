@@ -192,6 +192,6 @@ test('catálogo real no modo API com cotação do servidor', async ({ page }) =>
   await expect(page.getByText('Calabresa API').first()).toBeVisible();
   await expect(page.getByText(/total r\$ 58,00/i)).toBeVisible();
   await page.goto('/pdv');
-  await expect(page.getByText(/envio de pedido bloqueado/i)).toBeVisible();
+  await expect(page.getByText('Refrigerante')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Enviar para cozinha' })).toBeDisabled();
 });

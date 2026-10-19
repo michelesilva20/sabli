@@ -6,12 +6,14 @@ import { Card, CardContent } from '@/design-system/components/card';
 import { EmptyState } from '@/design-system/components/feedback';
 import { ThemeSwitcher } from '@/design-system/components/theme-switcher';
 import { SabliLogo } from '@/design-system/icons/logo';
+import { Dialog } from '@/design-system/components/dialog';
 import { ApiError } from '@/shared/api/http-client';
 import {
   logout,
   selectEstablishment,
   useAuthSession,
 } from '@/shared/auth/session';
+import { draftBlocksEstablishmentSwitch, resetOrderDraft } from '@/shared/orders/order-draft';
 
 export function SelectEstablishmentPage() {
   const navigate = useNavigate();
@@ -22,12 +24,41 @@ export function SelectEstablishmentPage() {
   );
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<{
+    organizationId: string;
+    id: string;
+  } | null>(null);
 
   const establishments = useMemo(() => {
     const all = me?.establishments ?? [];
     if (!organizationId) return all;
     return all.filter((item) => item.organizationId === organizationId);
   }, [me?.establishments, organizationId]);
+
+  async function enterEstablishment(organizationIdValue: string, establishmentId: string, discardDraft = false) {
+    if (discardDraft) resetOrderDraft();
+    setPendingId(establishmentId);
+    setError(null);
+    try {
+      await selectEstablishment(organizationIdValue, establishmentId);
+      navigate('/inicio', { replace: true });
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.code === 'TENANT_SUSPENDED') {
+        setError('Este estabelecimento está suspenso.');
+      } else if (cause instanceof ApiError && cause.status === 403) {
+        setError('Você não tem permissão para este estabelecimento.');
+      } else if (cause instanceof ApiError && cause.status === 404) {
+        setError('Este estabelecimento não está disponível para a sua conta.');
+      } else if (cause instanceof ApiError && cause.status === 401) {
+        navigate('/entrar', { replace: true, state: { reason: 'expired' } });
+      } else {
+        setError('Não foi possível validar o estabelecimento.');
+      }
+    } finally {
+      setPendingId(null);
+      setPendingSwitch(null);
+    }
+  }
 
   if (!me) {
     return null;
@@ -92,27 +123,15 @@ export function SelectEstablishmentPage() {
                     <Button
                       disabled={suspended || pendingId !== null}
                       loading={pendingId === establishment.id}
-                      onClick={async () => {
-                        setPendingId(establishment.id);
-                        setError(null);
-                        try {
-                          await selectEstablishment(establishment.organizationId, establishment.id);
-                          navigate('/inicio', { replace: true });
-                        } catch (cause) {
-                          if (cause instanceof ApiError && cause.code === 'TENANT_SUSPENDED') {
-                            setError('Este estabelecimento está suspenso.');
-                          } else if (cause instanceof ApiError && cause.status === 403) {
-                            setError('Você não tem permissão para este estabelecimento.');
-                          } else if (cause instanceof ApiError && cause.status === 404) {
-                            setError('Este estabelecimento não está disponível para a sua conta.');
-                          } else if (cause instanceof ApiError && cause.status === 401) {
-                            navigate('/entrar', { replace: true, state: { reason: 'expired' } });
-                          } else {
-                            setError('Não foi possível validar o estabelecimento.');
-                          }
-                        } finally {
-                          setPendingId(null);
+                      onClick={() => {
+                        if (draftBlocksEstablishmentSwitch(establishment.id)) {
+                          setPendingSwitch({
+                            organizationId: establishment.organizationId,
+                            id: establishment.id,
+                          });
+                          return;
                         }
+                        void enterEstablishment(establishment.organizationId, establishment.id);
                       }}
                     >
                       {suspended ? 'Indisponível' : 'Entrar'}
@@ -124,6 +143,31 @@ export function SelectEstablishmentPage() {
           </div>
         )}
       </div>
+      <Dialog
+        open={Boolean(pendingSwitch)}
+        onOpenChange={(open) => {
+          if (!open) setPendingSwitch(null);
+        }}
+        title="Descartar o rascunho?"
+        description="Há itens não confirmados no estabelecimento atual."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPendingSwitch(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingSwitch) return;
+                void enterEstablishment(pendingSwitch.organizationId, pendingSwitch.id, true);
+              }}
+            >
+              Descartar e entrar
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">Cancelar mantém o rascunho e não troca o estabelecimento.</p>
+      </Dialog>
     </div>
   );
 }

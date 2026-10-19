@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { ApiTableEditor } from '@/features/dining/api-table-editor';
 import { DiningSalon, DiningStatusFilters } from '@/features/dining/dining-map';
 import { occupancyEdge } from '@/features/dining/dining-occupancy';
@@ -22,6 +23,11 @@ import {
 import { toDiningMapTable, type TableResponse } from '@/shared/api/dining';
 import { ApiError } from '@/shared/api/http-client';
 import { canManageDining, canOperateDining, useAuthSession } from '@/shared/auth/session';
+import {
+  canBindDraftContext,
+  setDraftContext,
+  type DraftContext,
+} from '@/shared/orders/order-draft';
 import { elapsedLabel, formatDateTime } from '@/shared/domain/date';
 import type { TableStatus } from '@/shared/types/domain';
 import { cn } from '@/shared/utils/cn';
@@ -38,7 +44,8 @@ export function ApiDiningPage() {
   const [guests, setGuests] = useState(2);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<TableResponse | null>(null);
-  const [confirm, setConfirm] = useState<'reserve' | 'bill' | 'reopen' | null>(null);
+  const [confirm, setConfirm] = useState<'reserve' | 'bill' | 'reopen' | 'pos' | null>(null);
+  const navigate = useNavigate();
   const openingLock = useRef(false);
 
   const tablesQuery = useDiningTablesQuery(canManage && includeInactive);
@@ -76,6 +83,36 @@ export function ApiDiningPage() {
     setSelectedId(id);
     setConfirm(null);
     setGuests(Math.min(Math.max(table?.activeService?.guests ?? 2, 1), table?.seats ?? 2));
+  }
+
+  function tableDraftContext(): DraftContext | null {
+    if (!establishmentId || !selected || !selectedService) return null;
+    return {
+      establishmentId,
+      channel: 'TABLE',
+      tableId: selected.id,
+      tableServiceId: selectedService.id,
+      tableNumber: selected.number,
+    };
+  }
+
+  function goToPos() {
+    const next = tableDraftContext();
+    if (!next) return;
+    if (!canBindDraftContext(next)) {
+      setConfirm('pos');
+      return;
+    }
+    openPos();
+  }
+
+  function openPos() {
+    const next = tableDraftContext();
+    if (!next) return;
+    setDraftContext(next);
+    setConfirm(null);
+    setSelectedId(null);
+    navigate('/pdv');
   }
 
   async function refreshAfterConflict() {
@@ -366,13 +403,16 @@ export function ApiDiningPage() {
                 </Button>
               ) : null}
               {selectedMap.status === 'occupied' && canOperate ? (
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => setConfirm('bill')}
-                >
-                  Pedir conta
-                </Button>
+                <>
+                  <Button onClick={goToPos}>Adicionar itens</Button>
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => setConfirm('bill')}
+                  >
+                    Pedir conta
+                  </Button>
+                </>
               ) : null}
               {selectedMap.status === 'awaiting_bill' && canOperate ? (
                 <Button disabled={busy} onClick={() => setConfirm('reopen')}>
@@ -463,6 +503,26 @@ export function ApiDiningPage() {
       >
         <p className="text-sm text-muted-foreground">
           Encerramento financeiro permanece indisponível até a integração de Billing e Caixa.
+        </p>
+      </Dialog>
+      <Dialog
+        open={confirm === 'pos'}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null);
+        }}
+        title="Trocar o contexto do pedido?"
+        description="Há um rascunho em outro atendimento. Ele não é salvo no navegador."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={openPos}>Descartar rascunho</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Descartar limpa os itens atuais e leva ao PDV desta mesa.
         </p>
       </Dialog>
       <Dialog

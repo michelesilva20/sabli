@@ -57,12 +57,13 @@ public class KitchenTicketController {
   public PageResponse<TicketResponse> list(
       @PathVariable UUID establishmentId,
       @RequestParam(required = false) ProductionStatus productionStatus,
+      @RequestParam(defaultValue = "false") boolean includeComposition,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size) {
     var tickets =
         queries.list(currentUser.requireUserId(), establishmentId, productionStatus, page, size);
     return new PageResponse<>(
-        tickets.getContent().stream().map(ticket -> toResponse(ticket, false)).toList(),
+        tickets.getContent().stream().map(ticket -> toResponse(ticket, includeComposition)).toList(),
         tickets.getNumber(),
         tickets.getSize(),
         tickets.getTotalElements());

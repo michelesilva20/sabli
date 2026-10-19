@@ -65,6 +65,8 @@ export const problemDetailSchema = z.object({
   detail: z.string().optional(),
   status: z.number().optional(),
   code: z.string().optional(),
+  expectedTotalCents: z.number().int().optional(),
+  actualTotalCents: z.number().int().optional(),
 });
 
 export type TokenResponse = z.infer<typeof tokenResponseSchema>;

@@ -33,10 +33,15 @@ public final class OrderDtos {
       OrderChannel channel,
       UUID tableServiceId,
       @Size(max = 500) String notes,
+      @Min(0) Integer expectedTotalCents,
       @NotEmpty @Valid List<OrderItemRequest> items) {
     PlaceCommand toCommand() {
       return new PlaceCommand(
-          channel, tableServiceId, notes, items.stream().map(OrderItemRequest::toCommand).toList());
+          channel,
+          tableServiceId,
+          notes,
+          items.stream().map(OrderItemRequest::toCommand).toList(),
+          expectedTotalCents);
     }
   }
 
