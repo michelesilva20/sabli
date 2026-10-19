@@ -1,6 +1,6 @@
 # Backend Sabli
 
-API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade e catálogo (produtos, variações, pizza) estão persistidos. Mesas, pedidos, KDS e caixa ainda não existem no backend.
+API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade, catálogo e mesas/atendimentos estão persistidos. Pedidos, KDS e caixa ainda não existem no backend.
 
 ## Requisitos
 
@@ -118,7 +118,7 @@ cd apps/api
 
 No Windows: `mvnw.cmd -B verify`.
 
-Os testes cobrem cadastro, login, lockout, refresh com rotação e reuso, logout, JWT expirado, membership revogada, isolamento entre dois tenants, elevação de privilégio, estabelecimento de outra organização, tenant suspenso, acesso anônimo, Flyway V2, OpenAPI e constraints do PostgreSQL.
+Os testes cobrem identidade, catálogo, mesas/atendimentos, isolamento multi-tenant, concorrência de abertura, Flyway até V4, OpenAPI e constraints do PostgreSQL.
 
 ## Migrations
 
@@ -126,6 +126,8 @@ Arquivos em `apps/api/src/main/resources/db/migration/`, padrão Flyway `V{vers�
 
 - `V1` habilita `pgcrypto`.
 - `V2` cria `users`, `organizations`, `establishments`, `organization_memberships`, `establishment_memberships` e `refresh_sessions`.
+- `V3` cria o catálogo e a precificação de pizza.
+- `V4` cria `dining_tables` e `table_services`.
 
 Tabelas de pedidos, pagamentos e clientes ficam para os próximos checkpoints. O Flyway aplica as migrations na subida da API e nos testes.
 
@@ -161,9 +163,24 @@ Preço em centavos. Estratégias `HIGHEST` (sabor mais caro) e `AVERAGE` (média
 
 `WAITER`, `KITCHEN` e `CASHIER` leem e cotam. Só `ADMIN`/`MANAGER` (org ou estabelecimento) alteram catálogo e preços.
 
+## Mesas e atendimentos
+
+Cadastro da mesa e atendimento ativo são entidades distintas. A ocupação do mapa é **derivada** (não é coluna). Encerrar a mesa sem quitação responde `409 CLOSE_REQUIRES_SETTLEMENT`. Mapeamento TS: [dining-contracts.md](dining-contracts.md).
+
+| Recurso | Caminho |
+| --- | --- |
+| Mesas | `GET/POST /api/v1/establishments/{id}/tables` |
+| Cadastro | `GET/PATCH /tables/{id}`, `PATCH .../availability`, `PATCH .../status` |
+| Atendimento ativo | `GET/POST /tables/{id}/service` |
+| Conta | `POST /tables/{id}/service/bill` e `/reopen` |
+| Encerramento | `POST /tables/{id}/service/close` — bloqueado até o caixa |
+| Histórico | `GET /tables/{id}/services`, `GET /table-services` |
+
+`ADMIN`/`MANAGER` administram o cadastro. `WAITER` e `CASHIER` abrem atendimento e pedem conta. `KITCHEN` só lê.
+
 ## Limites deste checkpoint
 
-- Sem mesas, pedidos, KDS, caixa ou faturamento.
+- Sem pedidos, KDS, caixa ou faturamento. Encerramento de mesa sem quitação permanece bloqueado.
 - Sem MFA.
 - Sem integração React → API. `SabliDataSource` e a sessão demonstrativa permanecem.
 - Actuator expõe só `health`, sem detalhes.
