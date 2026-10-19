@@ -22,7 +22,7 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 
 ## O que esta versão não é
 
-Não há pagamento de adquirente, fiscal, delivery, reservas completas nem sincronização de KDS. No modo API, catálogo, mesas, pedidos, cozinha, comandas e caixa ainda não consomem o backend: a tela avisa que o módulo não está disponível. Esconder um módulo em Configurações só altera a navegação da demonstração.
+Não há pagamento de adquirente, fiscal, delivery, reservas completas nem sincronização de KDS. No modo API, o catálogo já consome o backend. Mesas, pedidos, cozinha, comandas e caixa ainda avisam que o módulo não está disponível. O PDV consulta o cardápio e cota pizza, mas não confirma pedido. Esconder um módulo em Configurações só altera a navegação da demonstração.
 
 ## Onde o código vive
 
@@ -43,10 +43,10 @@ Componentes visuais não importam fixtures e não chamam `fetch`. Dados reais pa
 | `/inicio` | Fundação | DEMO: indicadores de exemplo. API: contexto autorizado, sem fixtures. |
 | `/mesas` | Fundação | DEMO operacional. API: estado explícito de módulo não ligado. |
 | `/pedidos` | Polida | DEMO operacional. API: não ligado. |
-| `/pdv` | Fundação | DEMO operacional. API: não ligado. |
-| `/pdv/montar-pizza` | Fundação | DEMO operacional. API: não ligado. |
+| `/pdv` | Fundação | DEMO operacional. API: consulta o catálogo, sem enviar pedido. |
+| `/pdv/montar-pizza` | Fundação | DEMO operacional. API: cotação do servidor, sem adicionar ao pedido. |
 | `/comandas` | Polida | DEMO operacional. API: não ligado. |
-| `/produtos` | Polida | DEMO operacional. API: não ligado. |
+| `/produtos` | Polida | DEMO operacional. API: catálogo real, busca, filtros, CRUD e pizza. |
 | `/cozinha` | Polida | DEMO operacional. API: não ligado. |
 | `/caixa` | Fundação | DEMO operacional. API: não ligado. |
 | `/relatorios` | Fundação | DEMO ilustrativo. API: não ligado. |
@@ -66,7 +66,7 @@ Estabelecimento de exemplo no DEMO: Pizzaria do Centro. Operadora: Mariana Alves
 | Sidebar, estabelecimento DEMO, módulos | Zustand `sabli-ui` | Sim, no navegador |
 | Access token | memória (`token-memory.ts`) | Não |
 | Refresh | cookie HttpOnly `sabli_refresh` | Sim, só no cookie, Path `/api/v1/auth` |
-| Contexto de estabelecimento | memória da sessão API | Não. Restaurar sessão pede seleção de novo |
+| Contexto de estabelecimento | memória da sessão API + `users.last_*` no servidor | Hint no GET `/me`, sempre revalidado em `POST /me/context` |
 | Mesas, pedido, cozinha, caixa (DEMO) | `demo/session.ts` | Não |
 | Catálogos DEMO | Query + fixtures | Não |
 
@@ -111,7 +111,7 @@ No PowerShell: `$env:VITE_SABLI_MODE='api'; npm run dev` com a API no ar.
 
 ## Como continuar
 
-O próximo passo comercial é ligar catálogo, mesas e pedidos do SPA à API já autenticada (Checkpoint 2.1B). Não iniciar isso automaticamente.
+O próximo passo comercial é ligar mesas e o ciclo de pedidos do SPA à API já autenticada (Checkpoint 2.1C). Não iniciar isso automaticamente.
 
 ## Referência visual
 
