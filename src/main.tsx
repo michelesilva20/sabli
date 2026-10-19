@@ -10,6 +10,9 @@ import '@fontsource/nunito-sans/latin-800.css';
 import '@fontsource/nunito-sans/latin-ext-800.css';
 import '@/design-system/styles/globals.css';
 import { App } from '@/app/app';
+import { resolveRuntime } from '@/shared/config/runtime';
+
+resolveRuntime();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Elemento #root não encontrado.');

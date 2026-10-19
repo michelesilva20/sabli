@@ -18,7 +18,9 @@ public record IdentityProperties(Identity identity, Security security) {
 
   public record Lockout(int maxAttempts, Duration duration) {}
 
-  public record Security(Jwt jwt, int passwordEncoderStrength) {
+  public record Security(Jwt jwt, int passwordEncoderStrength, RefreshCookie cookie) {
     public record Jwt(String secret, Duration accessTokenTtl, Duration refreshTokenTtl) {}
+
+    public record RefreshCookie(String name, boolean secure, String sameSite, String path) {}
   }
 }

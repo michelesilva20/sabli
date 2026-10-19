@@ -1,6 +1,8 @@
 import { ClipboardList, LayoutGrid, Receipt, UtensilsCrossed } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
+import { ApiUnavailableState } from '@/features/auth/api-unavailable-state';
 import { SabliMark } from '@/design-system/icons/logo';
+import { isApiMode } from '@/shared/config/runtime';
 import { cn } from '@/shared/utils/cn';
 
 const items = [
@@ -11,6 +13,17 @@ const items = [
 ];
 
 export function WaiterLayout() {
+  if (isApiMode()) {
+    return (
+      <div className="min-h-dvh bg-background px-4 py-6 text-foreground">
+        <ApiUnavailableState module="tables" />
+      </div>
+    );
+  }
+  return <DemoWaiterLayout />;
+}
+
+function DemoWaiterLayout() {
   const navigate = useNavigate();
   return (
     <div className="min-h-dvh bg-[#F3EBE4] text-foreground dark:bg-[#120f16]">

@@ -55,3 +55,8 @@ sabli:
       access-token-ttl: PT15M
       refresh-token-ttl: P7D
     password-encoder-strength: 4
+    cookie:
+      name: sabli_refresh
+      secure: false
+      same-site: Lax
+      path: /api/v1/auth

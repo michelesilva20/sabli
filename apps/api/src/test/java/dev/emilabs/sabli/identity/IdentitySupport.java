@@ -45,14 +45,24 @@ abstract class IdentitySupport extends AbstractIntegrationTest {
             .andExpect(status().isCreated())
             .andReturn();
     JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
+    org.assertj.core.api.Assertions.assertThat(json.has("refreshToken")).isFalse();
     JsonNode me = me(json.get("accessToken").asText());
     return new Tenant(
         json.get("accessToken").asText(),
-        json.get("refreshToken").asText(),
+        refreshCookie(result),
         UUID.fromString(me.get("user").get("id").asText()),
         "admin-%s@example.com".formatted(key),
         UUID.fromString(me.get("organizations").get(0).get("id").asText()),
         UUID.fromString(me.get("establishments").get(0).get("id").asText()));
+  }
+
+  protected String refreshCookie(MvcResult result) {
+    jakarta.servlet.http.Cookie cookie = result.getResponse().getCookie("sabli_refresh");
+    org.assertj.core.api.Assertions.assertThat(cookie).isNotNull();
+    org.assertj.core.api.Assertions.assertThat(cookie.isHttpOnly()).isTrue();
+    org.assertj.core.api.Assertions.assertThat(cookie.getPath()).isEqualTo("/api/v1/auth");
+    org.assertj.core.api.Assertions.assertThat(cookie.getValue()).isNotBlank();
+    return cookie.getValue();
   }
 
   protected JsonNode me(String accessToken) throws Exception {

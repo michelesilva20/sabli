@@ -15,12 +15,42 @@ import { PageHeader } from '@/design-system/components/navigation';
 import { ThemeSwitcher } from '@/design-system/components/theme-switcher';
 import { pushToast } from '@/design-system/components/toast';
 import { useEstablishmentsQuery } from '@/shared/api/hooks';
+import { isApiMode } from '@/shared/config/runtime';
+import { useAuthSession } from '@/shared/auth/session';
 
 const schema = z.object({
   phone: z.string().trim().min(8, 'Informe um telefone com DDD.'),
 });
 
 export function SettingsPage() {
+  if (isApiMode()) return <ApiSettingsPage />;
+  return <DemoSettingsPage />;
+}
+
+function ApiSettingsPage() {
+  const place = useAuthSession().context?.establishment;
+  return (
+    <div className="grid max-w-3xl gap-5">
+      <PageHeader
+        title="Configurações"
+        description={`Preferências desta sessão em ${place?.name ?? 'seu estabelecimento'}. Esconder menu não substitui o RBAC do servidor.`}
+      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Aparência</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ThemeSwitcher />
+        </CardContent>
+      </Card>
+      <Banner>
+        Os módulos operacionais ainda não estão ligados à API. A autorização continua no servidor.
+      </Banner>
+    </div>
+  );
+}
+
+function DemoSettingsPage() {
   const establishments = useEstablishmentsQuery();
   const establishmentId = useUiStore((state) => state.establishmentId);
   const enabled = useUiStore((state) => state.enabledModules);

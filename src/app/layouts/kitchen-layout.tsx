@@ -4,6 +4,8 @@ import { ThemeSwitcher } from '@/design-system/components/theme-switcher';
 import { SabliLogo } from '@/design-system/icons/logo';
 import { formatTime } from '@/shared/domain/date';
 import { KITCHEN_FLOW, KITCHEN_STATUS_LABEL } from '@/shared/domain/kitchen';
+import { ApiUnavailableState } from '@/features/auth/api-unavailable-state';
+import { isApiMode } from '@/shared/config/runtime';
 import { useDemoSession } from '@/shared/demo/session';
 import { cn } from '@/shared/utils/cn';
 
@@ -33,6 +35,28 @@ function LiveClock() {
 }
 
 export function KitchenLayout() {
+  if (isApiMode()) {
+    return (
+      <div className="min-h-dvh bg-background text-foreground">
+        <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-6">
+          <SabliLogo />
+          <Link
+            to="/inicio"
+            className="rounded-full bg-muted px-3 py-1.5 text-sm font-extrabold hover:bg-muted/80"
+          >
+            Painel
+          </Link>
+        </header>
+        <main id="conteudo" className="px-4 py-5 sm:px-6">
+          <ApiUnavailableState module="kitchen" />
+        </main>
+      </div>
+    );
+  }
+  return <DemoKitchenLayout />;
+}
+
+function DemoKitchenLayout() {
   const session = useDemoSession();
 
   return (

@@ -14,6 +14,8 @@ import { Skeleton } from '@/design-system/components/feedback';
 import { PageHeader } from '@/design-system/components/navigation';
 import { Select } from '@/design-system/components/select';
 import { StatusBadge } from '@/design-system/components/badge';
+import { ApiHomePage } from '@/features/auth/api-home-page';
+import { isApiMode } from '@/shared/config/runtime';
 import { useDashboardQuery } from '@/shared/api/hooks';
 import { elapsedLabel, formatLongDate, greetingFor } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
@@ -36,6 +38,11 @@ function Reveal({ children, delay = 0 }: { children: ReactNode; delay?: number }
 }
 
 export function DashboardPage() {
+  if (isApiMode()) return <ApiHomePage />;
+  return <DemoDashboardPage />;
+}
+
+function DemoDashboardPage() {
   const [period, setPeriod] = useState<DashboardPeriod>('today');
   const query = useDashboardQuery(period);
   const session = useDemoSession();

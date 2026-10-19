@@ -191,5 +191,10 @@ public class AuthService {
       String password,
       String bootstrapToken) {}
 
-  public record TokenBundle(String accessToken, String refreshToken, long expiresInSeconds) {}
+  public record TokenBundle(String accessToken, String refreshToken, long expiresInSeconds) {
+    @Override
+    public String toString() {
+      return "TokenBundle[expiresInSeconds=" + expiresInSeconds + "]";
+    }
+  }
 }

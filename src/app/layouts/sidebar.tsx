@@ -5,6 +5,13 @@ import { useUiStore } from '@/app/stores/ui-store';
 import { SabliLogo } from '@/design-system/icons/logo';
 import { Avatar } from '@/design-system/components/media';
 import { Tooltip } from '@/design-system/components/overlays';
+import {
+  firstNameFrom,
+  initialsFrom,
+  roleLabel,
+  useAuthSession,
+} from '@/shared/auth/session';
+import { isApiMode } from '@/shared/config/runtime';
 import { useDemoSession } from '@/shared/demo/session';
 import { cn } from '@/shared/utils/cn';
 
@@ -73,6 +80,11 @@ export function Sidebar() {
   const collapsed = useUiStore((state) => state.sidebarCollapsed);
   const toggle = useUiStore((state) => state.toggleSidebar);
   const profile = useDemoSession().profile;
+  const auth = useAuthSession();
+  const name = isApiMode() ? (auth.me?.user.name ?? 'Conta') : profile.name;
+  const firstName = isApiMode() ? firstNameFrom(auth.me?.user.name) : profile.firstName;
+  const role = isApiMode() ? roleLabel(auth.context, auth.me) : profile.role;
+  const initials = isApiMode() ? initialsFrom(auth.me?.user.name) : profile.initials;
   return (
     <aside
       className={cn(
@@ -95,14 +107,14 @@ export function Sidebar() {
             collapsed && 'justify-center px-0',
           )}
         >
-          <Avatar initials={profile.initials} label={profile.name} className="size-9" />
+          <Avatar initials={initials} label={name} className="size-9" />
           {collapsed ? (
             <span className="sr-only">Perfil</span>
           ) : (
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-extrabold">{profile.firstName}</span>
+              <span className="block truncate text-sm font-extrabold">{firstName}</span>
               <span className="block truncate text-xs font-semibold text-muted-foreground">
-                {profile.role}
+                {role}
               </span>
             </span>
           )}

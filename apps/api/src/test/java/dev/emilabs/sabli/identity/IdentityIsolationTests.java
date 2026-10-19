@@ -264,9 +264,9 @@ class IdentityIsolationTests extends IdentitySupport {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"refreshToken\":\"%s\"}".formatted(tenant.refreshToken())))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.refreshToken").doesNotExist())
             .andReturn();
-    String nextRefresh =
-        objectMapper.readTree(first.getResponse().getContentAsString()).get("refreshToken").asText();
+    String nextRefresh = refreshCookie(first);
     mockMvc
         .perform(
             post("/api/v1/auth/refresh")
@@ -279,6 +279,26 @@ class IdentityIsolationTests extends IdentitySupport {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"refreshToken\":\"%s\"}".formatted(nextRefresh)))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void refreshUsesHttpOnlyCookieWhenBodyIsAbsent() throws Exception {
+    Tenant tenant = registerTenant("cook");
+    var refreshed =
+        mockMvc
+            .perform(
+                post("/api/v1/auth/refresh")
+                    .cookie(new jakarta.servlet.http.Cookie("sabli_refresh", tenant.refreshToken())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").exists())
+            .andExpect(jsonPath("$.refreshToken").doesNotExist())
+            .andReturn();
+    org.assertj.core.api.Assertions.assertThat(refreshCookie(refreshed)).isNotEqualTo(tenant.refreshToken());
+  }
+
+  @Test
+  void refreshWithoutCookieOrBodyIsRejected() throws Exception {
+    mockMvc.perform(post("/api/v1/auth/refresh")).andExpect(status().isUnauthorized());
   }
 
   @Test
@@ -364,14 +384,31 @@ class IdentityIsolationTests extends IdentitySupport {
     mockMvc
         .perform(
             post("/api/v1/auth/logout")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"%s\"}".formatted(tenant.refreshToken())))
+                .cookie(new jakarta.servlet.http.Cookie("sabli_refresh", tenant.refreshToken())))
         .andExpect(status().isNoContent());
     mockMvc
         .perform(
             post("/api/v1/auth/refresh")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"%s\"}".formatted(tenant.refreshToken())))
+                .cookie(new jakarta.servlet.http.Cookie("sabli_refresh", tenant.refreshToken())))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void loginSetsHttpOnlyRefreshCookieAndOmitsRefreshFromJson() throws Exception {
+    Tenant tenant = registerTenant("json");
+    var login =
+        mockMvc
+            .perform(
+                post("/api/v1/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"%s\",\"password\":\"password10\"}".formatted(tenant.email())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").exists())
+            .andExpect(jsonPath("$.refreshToken").doesNotExist())
+            .andReturn();
+    String header = login.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+    org.assertj.core.api.Assertions.assertThat(header).contains("HttpOnly");
+    org.assertj.core.api.Assertions.assertThat(header).contains("SameSite=Lax");
+    org.assertj.core.api.Assertions.assertThat(refreshCookie(login)).isNotBlank();
   }
 }

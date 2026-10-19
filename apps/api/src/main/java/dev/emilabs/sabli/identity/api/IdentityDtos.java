@@ -44,23 +44,28 @@ public final class IdentityDtos {
     }
   }
 
-  public record RefreshRequest(@NotBlank String refreshToken) {
+  public record RefreshRequest(String refreshToken) {
     @Override
     public String toString() {
       return "RefreshRequest[]";
     }
   }
 
-  public record LogoutRequest(@NotBlank String refreshToken) {
+  public record LogoutRequest(String refreshToken) {
     @Override
     public String toString() {
       return "LogoutRequest[]";
     }
   }
 
-  public record TokenResponse(String accessToken, String refreshToken, long expiresInSeconds, String tokenType) {
+  public record TokenResponse(String accessToken, long expiresInSeconds, String tokenType) {
     public static TokenResponse from(AuthService.TokenBundle bundle) {
-      return new TokenResponse(bundle.accessToken(), bundle.refreshToken(), bundle.expiresInSeconds(), "Bearer");
+      return new TokenResponse(bundle.accessToken(), bundle.expiresInSeconds(), "Bearer");
+    }
+
+    @Override
+    public String toString() {
+      return "TokenResponse[expiresInSeconds=" + expiresInSeconds + ", tokenType=" + tokenType + "]";
     }
   }
 

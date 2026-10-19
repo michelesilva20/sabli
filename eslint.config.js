@@ -6,7 +6,15 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'node_modules', 'apps'],
+    ignores: [
+      'dist',
+      'dist-api',
+      'coverage',
+      'playwright-report',
+      'test-results',
+      'node_modules',
+      'apps',
+    ],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
@@ -26,7 +34,18 @@ export default tseslint.config(
         'warn',
         {
           allowConstantExport: true,
-          allowExportNames: ['useTheme', 'pushToast', 'fieldDescribedBy', 'buttonVariants'],
+          allowExportNames: [
+            'useTheme',
+            'pushToast',
+            'fieldDescribedBy',
+            'buttonVariants',
+            'SessionBootstrap',
+            'GuestOnly',
+            'RequireAuth',
+            'RequireEstablishment',
+            'ApiServiceDown',
+            'LogoutOnDemand',
+          ],
         },
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
