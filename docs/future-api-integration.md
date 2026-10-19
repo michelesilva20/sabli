@@ -1,6 +1,6 @@
 # Integração futura com a API Java
 
-A API em `apps/api` já autentica, persiste o catálogo e as mesas/atendimentos. O frontend continua em `SabliDataSource` (`src/shared/api/data-source.ts`) com fixtures e atraso curto. O mapeamento está em [catalog-contracts.md](catalog-contracts.md) e [dining-contracts.md](dining-contracts.md).
+A API em `apps/api` já autentica e persiste catálogo, mesas e pedidos/KDS. O frontend continua em `SabliDataSource` (`src/shared/api/data-source.ts`) com fixtures e atraso curto. O mapeamento está em [catalog-contracts.md](catalog-contracts.md), [dining-contracts.md](dining-contracts.md) e [orders-contracts.md](orders-contracts.md).
 
 Quando a API existir, a troca prevista é substituir `mockDataSource` por um cliente HTTP, mantendo os mesmos métodos e os tipos de `src/shared/types/domain.ts`.
 
@@ -29,7 +29,7 @@ Essas operações precisarão de comandos idempotentes, conferência de estoque,
 
 ## Preço da pizza
 
-`calculatePizzaPrice` no frontend permanece como prévia local. `POST /api/v1/establishments/{id}/catalog/pizza/quotes` já devolve o total do servidor (borda, adicionais, tamanho e estratégia). A cotação não reserva preço; o congelamento fica para o módulo de pedidos.
+`calculatePizzaPrice` no frontend permanece como prévia local. `POST /api/v1/establishments/{id}/catalog/pizza/quotes` já devolve o total do servidor (borda, adicionais, tamanho e estratégia). A cotação não reserva preço; a confirmação do pedido congela nomes, composição e valores.
 
 ## Fora desta fundação
 
