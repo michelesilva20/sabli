@@ -105,6 +105,22 @@ public class TenantAuthorizer {
     throw ApiException.forbidden();
   }
 
+  public EstAccess requireKitchenOperator(UUID userId, UUID establishmentId) {
+    EstAccess access = requireOperationalEstablishment(userId, establishmentId);
+    if (access.organizationRole() == OrganizationRole.ADMIN
+        || access.organizationRole() == OrganizationRole.MANAGER) {
+      return access;
+    }
+    EstablishmentRole role =
+        access.establishmentMembership() == null ? null : access.establishmentMembership().role();
+    if (role == EstablishmentRole.KITCHEN
+        || role == EstablishmentRole.ADMIN
+        || role == EstablishmentRole.MANAGER) {
+      return access;
+    }
+    throw ApiException.forbidden();
+  }
+
   public EstAccess requireEstablishmentManager(UUID userId, UUID establishmentId, EstablishmentRole target) {
     return requireEstablishmentManager(userId, establishmentId, target, true);
   }

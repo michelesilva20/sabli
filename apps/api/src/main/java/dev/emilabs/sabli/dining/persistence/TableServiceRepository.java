@@ -18,6 +18,11 @@ public interface TableServiceRepository extends JpaRepository<TableService, UUID
 
   Optional<TableService> findByIdAndEstablishmentId(UUID id, UUID establishmentId);
 
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select s from TableService s where s.id = :id and s.establishmentId = :establishmentId")
+  Optional<TableService> lockByIdAndEstablishmentId(
+      @Param("id") UUID id, @Param("establishmentId") UUID establishmentId);
+
   Optional<TableService> findByTableIdAndEstablishmentIdAndStatusIn(
       UUID tableId, UUID establishmentId, Collection<TableServiceStatus> statuses);
 

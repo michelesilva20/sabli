@@ -289,7 +289,8 @@ public class PizzaCatalogService {
                   extraItems,
                   command.quantity(),
                   menu.settings().strategy()));
-      return new QuoteSnapshot(size, selectedFlavors, crust, selectedExtras, command.quantity(), result);
+      return new QuoteSnapshot(
+          size, selectedFlavors, crust, selectedExtras, command.quantity(), result, flavorItems, extraItems);
     } catch (IllegalArgumentException ex) {
       throw ApiException.unprocessable("QUOTE_INVALID", ex.getMessage());
     }
@@ -403,5 +404,7 @@ public class PizzaCatalogService {
       PizzaCrust crust,
       List<PizzaExtra> extras,
       int quantity,
-      QuoteResult result) {}
+      QuoteResult result,
+      List<PricedItem> flavorItems,
+      List<PricedItem> extraItems) {}
 }
