@@ -4,7 +4,7 @@ Este documento descreve o ponto atual para continuar o trabalho. Não substitui 
 
 ## Em uma frase
 
-O Sabli é a plataforma SaaS da Emilabs para restaurantes e pizzarias. O frontend demonstrativo está na `main`. A API Java autentica tenants e persiste catálogo, mesas e pedidos/KDS. Ainda não há caixa no backend.
+O Sabli é a plataforma SaaS da Emilabs para restaurantes e pizzarias. O frontend demonstrativo está na `main`. A API Java autentica tenants e persiste catálogo, mesas, pedidos/KDS, comandas e caixa.
 
 Slogan: **Seu negócio inteiro. Em um só lugar.**
 
@@ -21,7 +21,7 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 
 ## O que esta versão não é
 
-Não há pagamento de adquirente, persistência operacional no SPA, fiscal, delivery, reservas completas nem sincronização de KDS. A API em `apps/api` autentica e persiste catálogo, mesas e pedidos/KDS, mas o SPA ainda usa fixtures e a sessão demonstrativa. Não ligar o React à API neste ponto nem inventar caixa no backend.
+Não há pagamento de adquirente, persistência operacional no SPA, fiscal, delivery, reservas completas nem sincronização de KDS. A API em `apps/api` autentica e persiste o ciclo operacional até o caixa, mas o SPA ainda usa fixtures e a sessão demonstrativa. Não ligar o React à API neste ponto.
 
 Esconder um módulo em Configurações só tira o item da navegação. A rota continua existindo.
 
@@ -29,7 +29,7 @@ Esconder um módulo em Configurações só tira o item da navegação. A rota co
 
 ```text
 src/                 SPA React (inalterado neste checkpoint)
-apps/api/            identidade, catálogo, mesas, pedidos e KDS
+apps/api/            identidade, catálogo, mesas, pedidos, KDS, comandas e caixa
 .github/workflows/   CI
 ```
 
@@ -83,7 +83,7 @@ Estabelecimento de exemplo: Pizzaria do Centro. Operadora de exemplo: Mariana Al
 
 ## Git e entrega
 
-Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10 (`feat/tables-service`). Pedidos seguem empilhados em `feat/orders-kitchen` sobre a #10.
+Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11 (`feat/orders-kitchen`). Caixa segue empilhado em `feat/billing-cash` sobre a #11.
 
 ## Como rodar
 
@@ -103,9 +103,9 @@ App em `http://127.0.0.1:5173/`. Node 22+ e npm 11+.
 
 ## Como continuar
 
-Catálogo, mesas e pedidos da API existem. O próximo checkpoint comercial é caixa/pagamentos, ou a ligação do SPA à autenticação.
+O ciclo persistente até o caixa existe na API. O próximo passo comercial é ligar o SPA à autenticação, ou fiscal/adquirente.
 
-O SPA continua falando com fixtures e com `demo/session.ts`. Não ligar o React à API neste ponto. Ver [catalog-contracts.md](catalog-contracts.md), [dining-contracts.md](dining-contracts.md) e [orders-contracts.md](orders-contracts.md).
+O SPA continua falando com fixtures e com `demo/session.ts`. Não ligar o React à API neste ponto. Ver [catalog-contracts.md](catalog-contracts.md), [dining-contracts.md](dining-contracts.md), [orders-contracts.md](orders-contracts.md) e [billing-contracts.md](billing-contracts.md).
 
 ## Referência visual
 
