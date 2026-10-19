@@ -20,8 +20,10 @@ const me = {
   ],
 };
 
-async function mockApi(page: Page, signedIn = false) {
+async function mockApi(page: Page, signedIn = false, lastContext = false) {
   let session = signedIn;
+  let lastOrganizationId = lastContext ? orgId : undefined;
+  let lastEstablishmentId = lastContext ? estId : undefined;
   await page.route(`${API}/**`, async (route) => {
     const url = route.request().url();
     const method = route.request().method();
@@ -73,13 +75,25 @@ async function mockApi(page: Page, signedIn = false) {
       return;
     }
     if (method === 'GET' && url.endsWith('/me')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(me) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ...me, lastOrganizationId, lastEstablishmentId }),
+      });
+      return;
+    }
+    if (method === 'DELETE' && url.endsWith('/me/context')) {
+      lastOrganizationId = undefined;
+      lastEstablishmentId = undefined;
+      await route.fulfill({ status: 204, body: '' });
       return;
     }
     if (method === 'POST' && url.endsWith('/me/context')) {
       const body = route.request().postDataJSON() as { establishmentId?: string };
       const establishment =
         body.establishmentId === estBairroId ? me.establishments[1] : me.establishments[0];
+      lastOrganizationId = orgId;
+      lastEstablishmentId = establishment.id;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -118,6 +132,14 @@ test('login e seleção de estabelecimento no modo API', async ({ page }) => {
   }));
   expect(JSON.stringify(storage)).not.toContain('e2e-access');
   expect(JSON.stringify(storage)).not.toContain('e2e-refresh');
+});
+
+test('restaura o estabelecimento autorizado após recarregar', async ({ page }) => {
+  await mockApi(page, true, true);
+  await page.goto('/inicio');
+  await expect(page.getByRole('heading', { name: 'Início' })).toBeVisible();
+  await expect(page.locator('#conteudo').getByText('Loja Centro', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Onde você vai operar?' })).toHaveCount(0);
 });
 
 test('rejeita credenciais inválidas sem cair na demonstração', async ({ page }) => {

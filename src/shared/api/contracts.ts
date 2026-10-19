@@ -49,6 +49,8 @@ export const meResponseSchema = z.object({
   organizationMemberships: z.array(organizationMembershipSchema),
   establishments: z.array(establishmentSchema),
   establishmentMemberships: z.array(establishmentMembershipSchema),
+  lastOrganizationId: z.string().uuid().nullable().optional(),
+  lastEstablishmentId: z.string().uuid().nullable().optional(),
 });
 
 export const contextResponseSchema = z.object({

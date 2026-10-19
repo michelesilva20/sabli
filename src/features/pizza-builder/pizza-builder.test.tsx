@@ -76,8 +76,9 @@ describe('montador de pizza', () => {
     await user.click(await screen.findByRole('button', { name: '2. Sabores' }));
     await user.click(await screen.findByRole('button', { name: /^Calabresa/ }));
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
-    await user.click(await screen.findByRole('button', { name: 'Voltar' }));
-    expect(screen.getByRole('button', { name: /^Calabresa/ })).toHaveAttribute(
+    expect(await screen.findByRole('heading', { name: 'Borda' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Voltar' }));
+    expect(await screen.findByRole('button', { name: /^Calabresa/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

@@ -10,6 +10,7 @@ import dev.emilabs.sabli.identity.domain.Organization;
 import dev.emilabs.sabli.identity.domain.OrganizationMembership;
 import dev.emilabs.sabli.identity.domain.OrganizationRole;
 import dev.emilabs.sabli.identity.domain.TenantStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -110,12 +111,15 @@ public final class IdentityDtos {
     }
   }
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   public record MeResponse(
       UserResponse user,
       List<OrganizationResponse> organizations,
       List<OrganizationMembershipResponse> organizationMemberships,
       List<EstablishmentResponse> establishments,
-      List<EstablishmentMembershipResponse> establishmentMemberships) {
+      List<EstablishmentMembershipResponse> establishmentMemberships,
+      UUID lastOrganizationId,
+      UUID lastEstablishmentId) {
     public static MeResponse from(MeSnapshot snapshot) {
       return new MeResponse(
           new UserResponse(
@@ -126,7 +130,9 @@ public final class IdentityDtos {
           snapshot.organizations().stream().map(OrganizationResponse::from).toList(),
           snapshot.organizationMemberships().stream().map(OrganizationMembershipResponse::from).toList(),
           snapshot.establishments().stream().map(EstablishmentResponse::from).toList(),
-          snapshot.establishmentMemberships().stream().map(EstablishmentMembershipResponse::from).toList());
+          snapshot.establishmentMemberships().stream().map(EstablishmentMembershipResponse::from).toList(),
+          snapshot.user().lastOrganizationId(),
+          snapshot.user().lastEstablishmentId());
     }
   }
 

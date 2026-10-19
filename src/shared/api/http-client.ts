@@ -43,12 +43,26 @@ export function apiUrl(path: string): string {
   return `${runtime().apiBaseUrl}${prefix}${normalized}`;
 }
 
+export type QueryValue = string | number | boolean | undefined | null;
+
+export function withQuery(path: string, query?: Record<string, QueryValue>): string {
+  if (!query) return path;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null || value === '') continue;
+    params.set(key, String(value));
+  }
+  const encoded = params.toString();
+  return encoded ? `${path}?${encoded}` : path;
+}
+
 export async function apiRequest<T>(
   schema: ZodType<T>,
   options: {
     path: string;
     method?: HttpMethod;
     body?: unknown;
+    query?: Record<string, QueryValue>;
     signal?: AbortSignal;
     timeoutMs?: number;
     auth?: boolean;
@@ -70,7 +84,7 @@ export async function apiRequest<T>(
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
 
-    const response = await fetch(apiUrl(options.path), {
+    const response = await fetch(apiUrl(withQuery(options.path, options.query)), {
       method,
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),

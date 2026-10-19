@@ -21,7 +21,7 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
 
   @Test
   void appliesCatalogMigrationAgainstPostgres() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
     assertThat(
             jdbcTemplate.queryForObject(
                 "select extname from pg_extension where extname = 'pgcrypto'", String.class))

@@ -115,6 +115,21 @@ public class IdentityQueryService {
         estAccess.establishmentMembership() == null ? null : estAccess.establishmentMembership().role());
   }
 
+  @Transactional
+  public ContextSnapshot selectContext(UUID userId, UUID organizationId, UUID establishmentId) {
+    ContextSnapshot snapshot = validateContext(userId, organizationId, establishmentId);
+    if (snapshot.establishment() != null) {
+      UserAccount user = users.findById(userId).orElseThrow(ApiException::unauthorized);
+      user.rememberContext(snapshot.organization().id(), snapshot.establishment().id());
+    }
+    return snapshot;
+  }
+
+  @Transactional
+  public void forgetContext(UUID userId) {
+    users.findById(userId).ifPresent(UserAccount::forgetContext);
+  }
+
   public record MeSnapshot(
       UserAccount user,
       List<Organization> organizations,

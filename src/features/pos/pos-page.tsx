@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CatalogProductsState } from '@/features/catalog/catalog-products-state';
+import { ApiPosPage } from '@/features/pos/api-pos-page';
 import { ProductCatalogCard, ProductCategoryTabs } from '@/features/catalog/product-card';
+import { isApiMode } from '@/shared/config/runtime';
 import { OrderSummary } from '@/features/ordering/order-summary';
 import { useCatalogQuery } from '@/shared/api/hooks';
 import {
@@ -19,6 +21,11 @@ import { Sheet } from '@/design-system/components/sheet';
 import { pushToast } from '@/design-system/components/toast';
 
 export function PosPage() {
+  if (isApiMode()) return <ApiPosPage />;
+  return <DemoPosPage />;
+}
+
+function DemoPosPage() {
   const catalog = useCatalogQuery();
   const session = useDemoSession();
   const navigate = useNavigate();

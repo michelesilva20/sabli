@@ -1,6 +1,8 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { ApiPizzaBuilderPage } from '@/features/pizza-builder/api-pizza-builder';
+import { isApiMode } from '@/shared/config/runtime';
 import { usePizzaOptionsQuery } from '@/shared/api/hooks';
 import {
   calculatePizzaPrice,
@@ -504,6 +506,11 @@ export function PizzaBuilder({
 }
 
 export function PizzaBuilderPage() {
+  if (isApiMode()) return <ApiPizzaBuilderPage />;
+  return <DemoPizzaBuilderPage />;
+}
+
+function DemoPizzaBuilderPage() {
   const session = useDemoSession();
   const activeTable = session.tables.find((table) => table.id === session.activeTableId);
   const tableLabel = activeTable ? `Mesa ${String(activeTable.number).padStart(2, '0')}` : null;

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { cn } from '@/shared/utils/cn';
 
-export function ProductArt({ image, available }: { image: string; available: boolean }) {
-  const [failed, setFailed] = useState(false);
+export function ProductArt({ image, available }: { image?: string; available: boolean }) {
+  const [failed, setFailed] = useState(!image);
 
   return (
     <div className="relative aspect-[16/10] overflow-hidden bg-muted">

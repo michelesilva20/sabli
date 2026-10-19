@@ -1,11 +1,18 @@
 import { useState } from 'react';
+import { ApiCatalogPage } from '@/features/catalog/api-catalog-page';
 import { ProductCatalogCard, ProductCategoryTabs } from '@/features/catalog/product-card';
 import { useCatalogQuery } from '@/shared/api/hooks';
+import { isApiMode } from '@/shared/config/runtime';
 import { demoSession, useDemoSession } from '@/shared/demo/session';
 import { PageHeader } from '@/design-system/components/navigation';
 import { pushToast } from '@/design-system/components/toast';
 
 export function CatalogPage() {
+  if (isApiMode()) return <ApiCatalogPage />;
+  return <DemoCatalogPage />;
+}
+
+function DemoCatalogPage() {
   const catalog = useCatalogQuery();
   const session = useDemoSession();
   const [category, setCategory] = useState('pizzas');
