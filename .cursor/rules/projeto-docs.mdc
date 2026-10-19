@@ -1,0 +1,28 @@
+---
+description: Manter docs/projeto.md alinhado ao código na mesma entrega
+alwaysApply: true
+---
+
+# Documento vivo do projeto
+
+`docs/projeto.md` é a fonte de verdade do Sabli. Depois de qualquer entrega coerente, atualize-o **na mesma branch e no mesmo commit** (ou no commit `docs:` imediatamente seguinte).
+
+## Quando atualizar
+
+Mudou tela, rota, modo DEMO/API, módulo ligado, invariante, stack, pasta, contrato persistido, como rodar, limite ou próximo passo → edite o handbook.
+
+Não espere o usuário pedir. Não deixe o código novo e o documento desencontrados.
+
+## Como atualizar
+
+1. Leia `docs/projeto.md` e altere só as seções que a mudança toca.
+2. A tabela de telas e a lista `apiReady` de `module-gate.tsx` precisam coincidir.
+3. Se um contrato especializado mudou (`docs/*-contracts.md`, `backend.md`, `design-system.md`), atualize-o também e corrija qualquer frase que contradiga o handbook.
+4. Data no topo: dia da entrega. Não invente módulo, rota ou entidade que o produto ainda não tenha.
+5. Detalhe de endpoint, token visual ou Flyway fica no doc especializado; o handbook resume e aponta.
+
+## O que não fazer
+
+- Não duplicar o handbook em `README.md` nem em `docs/estado-atual.md` — esses dois só apontam para `docs/projeto.md` e guardam o mínimo para instalar.
+- Não afirmar que um módulo está na `main` sem conferir o Git.
+- Não descrever fallback silencioso de API → DEMO.
