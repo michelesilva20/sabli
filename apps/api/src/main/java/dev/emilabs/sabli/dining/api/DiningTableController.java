@@ -145,7 +145,7 @@ public class DiningTableController {
   }
 
   @PostMapping("/{tableId}/service/close")
-  @Operation(summary = "Encerramento reservado ao fechamento com quitação")
+  @Operation(summary = "Encerra o atendimento somente com a conta quitada")
   public ServiceResponse close(@PathVariable UUID establishmentId, @PathVariable UUID tableId) {
     return ServiceResponse.from(commands.closeService(currentUser.requireUserId(), establishmentId, tableId));
   }

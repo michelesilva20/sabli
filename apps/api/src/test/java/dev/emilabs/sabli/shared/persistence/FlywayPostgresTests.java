@@ -21,7 +21,7 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
 
   @Test
   void appliesCatalogMigrationAgainstPostgres() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
     assertThat(
             jdbcTemplate.queryForObject(
                 "select extname from pg_extension where extname = 'pgcrypto'", String.class))
@@ -39,10 +39,11 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
                     'pizza_settings', 'pizza_sizes', 'pizza_flavors', 'pizza_flavor_prices',
                     'pizza_crusts', 'pizza_extras', 'dining_tables', 'table_services',
                     'order_counters', 'orders', 'order_items', 'order_item_pizza_flavors',
-                    'order_item_modifiers', 'kitchen_tickets', 'kitchen_ticket_items')
+                    'order_item_modifiers', 'kitchen_tickets', 'kitchen_ticket_items',
+                    'bills', 'bill_payments', 'cash_sessions', 'cash_movements')
                 """,
                 Integer.class))
-        .isEqualTo(24);
+        .isEqualTo(28);
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -259,6 +260,48 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
         .isEqualTo(2);
   }
 
+  @Test
+  void postgresRejectsPaymentLinkedToBillOfAnotherEstablishment() {
+    BillingSeed seed = insertBillingSeed();
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    insert into bill_payments
+                      (id, bill_id, establishment_id, organization_id, cash_session_id, method, capture_kind,
+                       tendered_cents, applied_cents, change_cents, recorded_by_user_id, recorded_by_name,
+                       notes, idempotency_key, idempotency_hash, recorded_at, version, created_at, updated_at)
+                    values (?, ?, ?, ?, ?, 'CASH', 'MANUAL_DECLARED', 100, 100, 0, ?, 'Op', '', 'k',
+                            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now(), 0, now(), now())
+                    """,
+                    UUID.randomUUID(),
+                    seed.billId(),
+                    seed.estB(),
+                    seed.orgId(),
+                    seed.sessionId(),
+                    seed.userId()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  void postgresRejectsTwoOpenCashSessionsOnTheSameEstablishment() {
+    BillingSeed seed = insertBillingSeed();
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    insert into cash_sessions
+                      (id, establishment_id, organization_id, scope, opened_by_user_id, opened_by_name,
+                       opening_float_cents, notes, status, opened_at, expected_cash_cents, version, created_at, updated_at)
+                    values (?, ?, ?, 'ESTABLISHMENT', ?, 'Op', 0, '', 'OPEN', now(), 0, 0, now(), now())
+                    """,
+                    UUID.randomUUID(),
+                    seed.estA(),
+                    seed.orgId(),
+                    seed.userId()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
   private DiningSeed insertDiningSeed() {
     UUID userId = UUID.randomUUID();
     UUID orgId = UUID.randomUUID();
@@ -303,4 +346,73 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
   }
 
   private record DiningSeed(UUID userId, UUID orgId, UUID estA, UUID estB, UUID tableA) {}
+
+  private BillingSeed insertBillingSeed() {
+    DiningSeed dining = insertDiningSeed();
+    UUID serviceId = UUID.randomUUID();
+    UUID orderId = UUID.randomUUID();
+    UUID billId = UUID.randomUUID();
+    UUID sessionId = UUID.randomUUID();
+    jdbcTemplate.update(
+        """
+        insert into table_services
+          (id, table_id, establishment_id, organization_id, guest_count, opened_by_user_id,
+           host_name, opened_at, status, version, created_at, updated_at)
+        values (?, ?, ?, ?, 1, ?, 'Host', now(), 'OPEN', 0, now(), now())
+        """,
+        serviceId,
+        dining.tableA(),
+        dining.estA(),
+        dining.orgId(),
+        dining.userId());
+    jdbcTemplate.update(
+        """
+        insert into order_counters (establishment_id, organization_id, last_number)
+        values (?, ?, 1)
+        """,
+        dining.estA(),
+        dining.orgId());
+    jdbcTemplate.update(
+        """
+        insert into orders
+          (id, establishment_id, organization_id, table_id, table_service_id, channel, number,
+           placed_by_user_id, placed_by_name, notes, subtotal_cents, discount_cents, total_cents,
+           commercial_status, production_status, idempotency_key, idempotency_hash, placed_at,
+           version, created_at, updated_at)
+        values (?, ?, ?, ?, ?, 'TABLE', 1, ?, 'Host', '', 800, 0, 800, 'CONFIRMED', 'WAITING', 'k',
+                'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now(), 0, now(), now())
+        """,
+        orderId,
+        dining.estA(),
+        dining.orgId(),
+        dining.tableA(),
+        serviceId,
+        dining.userId());
+    jdbcTemplate.update(
+        """
+        insert into bills
+          (id, establishment_id, organization_id, kind, table_id, table_service_id, subtotal_cents,
+           discount_cents, total_cents, paid_cents, remaining_cents, status, version, created_at, updated_at)
+        values (?, ?, ?, 'TABLE', ?, ?, 800, 0, 800, 0, 800, 'OPEN', 0, now(), now())
+        """,
+        billId,
+        dining.estA(),
+        dining.orgId(),
+        dining.tableA(),
+        serviceId);
+    jdbcTemplate.update(
+        """
+        insert into cash_sessions
+          (id, establishment_id, organization_id, scope, opened_by_user_id, opened_by_name,
+           opening_float_cents, notes, status, opened_at, expected_cash_cents, version, created_at, updated_at)
+        values (?, ?, ?, 'ESTABLISHMENT', ?, 'Op', 0, '', 'OPEN', now(), 0, 0, now(), now())
+        """,
+        sessionId,
+        dining.estA(),
+        dining.orgId(),
+        dining.userId());
+    return new BillingSeed(dining.userId(), dining.orgId(), dining.estA(), dining.estB(), billId, sessionId);
+  }
+
+  private record BillingSeed(UUID userId, UUID orgId, UUID estA, UUID estB, UUID billId, UUID sessionId) {}
 }

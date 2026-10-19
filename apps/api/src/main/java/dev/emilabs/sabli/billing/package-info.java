@@ -1,4 +1,4 @@
 /**
- * Comandas e quitação de contas.
+ * Comandas, pagamentos informados pelo operador e quitação.
  */
 package dev.emilabs.sabli.billing;
