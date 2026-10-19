@@ -1,6 +1,6 @@
 # Backend Sabli
 
-Fundação Java da API. O frontend React em `src/` continua autônomo: ainda não há autenticação real, operações de negócio nem integração HTTP com o SPA.
+API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Este checkpoint cobre identidade e isolamento multi-tenant. Catálogo, mesas, pedidos, KDS e caixa ainda não existem no backend.
 
 ## Requisitos
 
@@ -32,7 +32,7 @@ cd apps/api
 cp .env.example .env
 ```
 
-Defina `SABLI_DATASOURCE_PASSWORD` no `.env`. Não commite esse arquivo.
+Defina `SABLI_DATASOURCE_PASSWORD` e `SABLI_JWT_SECRET` (mínimo 32 caracteres) no `.env`. Não commite esse arquivo. Com `SABLI_REGISTRATION_MODE=BOOTSTRAP_TOKEN`, defina também `SABLI_BOOTSTRAP_SIGNUP_TOKEN`. Token vazio recusa o cadastro público.
 
 ```bash
 docker compose --env-file .env up -d
@@ -48,8 +48,6 @@ No PowerShell: `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"` d
 
 Saúde pública: `GET http://127.0.0.1:8080/actuator/health` → `{"status":"UP"}`.
 
-Qualquer outro caminho responde 401. Não existe usuário administrador, senha padrão, JWT nem RBAC.
-
 ### Variáveis
 
 | Variável | Obrigatória | Função |
@@ -57,8 +55,57 @@ Qualquer outro caminho responde 401. Não existe usuário administrador, senha p
 | `SABLI_DATASOURCE_URL` | no perfil `local` | JDBC PostgreSQL 17 |
 | `SABLI_DATASOURCE_USERNAME` | no perfil `local` | Usuário do banco |
 | `SABLI_DATASOURCE_PASSWORD` | no perfil `local` | Senha. Sem valor default no Git |
+| `SABLI_JWT_SECRET` | sim | Segredo HS256, no mínimo 32 caracteres. Sem default útil no Git |
+| `SABLI_REGISTRATION_MODE` | não | `DISABLED`, `OPEN` ou `BOOTSTRAP_TOKEN`. Default `BOOTSTRAP_TOKEN` |
+| `SABLI_BOOTSTRAP_SIGNUP_TOKEN` | no modo bootstrap | Convite para criar a primeira organização. Vazio recusa o cadastro |
 | `SABLI_CORS_ALLOWED_ORIGINS` | não | Origens permitidas, separadas por vírgula. Default `http://127.0.0.1:5173` |
 | `SABLI_OPENAPI_ENABLED` | não | Liga `/v3/api-docs` no perfil `local`. Continua autenticado |
+| `SABLI_BCRYPT_STRENGTH` | não | Custo BCrypt. Default 12 |
+
+## Identidade e isolamento
+
+Hierarquia: Organization → Establishment → memberships. Um usuário pode pertencer a várias organizações e estabelecimentos. Não há relação 1:1 entre usuário e organização.
+
+Cadastro inicial: `POST /api/v1/auth/register-organization` cria organização, estabelecimento e o primeiro administrador. Não existe usuário admin fixo nem senha default no repositório.
+
+Autenticação:
+
+- Login por e-mail (normalizado) e senha (BCrypt).
+- Access JWT HS256, curta duração (~15 min), claims `sub` e `typ=access`. Sem organização nem estabelecimento no token.
+- Refresh opaco, 32 bytes, armazenado só como SHA-256. Rotação por família; reuso revoga a família. Logout revoga a sessão apresentada.
+- Bloqueio após 5 senhas inválidas por 15 minutos. Mensagem genérica, sem enumerar e-mail.
+
+Contexto de tenant: IDs vão no path ou em `POST /api/v1/me/context`. O servidor valida membership ativa. JWT válido não autoriza sozinho. Recurso de outro tenant responde 404. Tenant `SUSPENDED` bloqueia mutações operacionais (`TENANT_SUSPENDED`). Membership `REVOKED` some do acesso.
+
+### Papéis
+
+Organização: `ADMIN`, `MANAGER`. Estabelecimento: `ADMIN`, `MANAGER`, `CASHIER`, `WAITER`, `KITCHEN`.
+
+- `ADMIN` da organização administra a organização, estabelecimentos e qualquer membership.
+- `MANAGER` da organização opera a organização, mas não concede `ADMIN` de organização nem `ADMIN` de estabelecimento.
+- Papéis operacionais do estabelecimento não gerenciam organizações nem elevam privilégios acima do próprio rank.
+- Garçom e cozinha não gerenciam memberships.
+
+O PostgreSQL impede membership de estabelecimento com `organization_id` de outra organização (FK composta).
+
+### Endpoints `/api/v1`
+
+| Método | Caminho | Auth |
+| --- | --- | --- |
+| POST | `/auth/register-organization` | público, sujeitos à política de cadastro |
+| POST | `/auth/login` | público |
+| POST | `/auth/refresh` | público (precisa do refresh válido) |
+| POST | `/auth/logout` | público (revoga se o refresh existir) |
+| GET | `/me` | JWT |
+| POST | `/me/context` | JWT |
+| GET | `/organizations` | JWT |
+| GET/PATCH | `/organizations/{id}` | JWT + membership |
+| GET/POST | `/organizations/{id}/establishments` | JWT + autorização |
+| GET/PUT/DELETE | `/organizations/{id}/memberships` | JWT + ADMIN/MANAGER da org |
+| GET/PATCH | `/establishments/{id}` | JWT + membership |
+| GET/PUT/DELETE | `/establishments/{id}/memberships` | JWT + gestor autorizado |
+
+Erros seguem Problem Detail com `code`. Respostas usam DTOs: nenhum hash, token de sessão ou entidade JPA vazam.
 
 ## Testes da API
 
@@ -71,11 +118,16 @@ cd apps/api
 
 No Windows: `mvnw.cmd -B verify`.
 
+Os testes cobrem cadastro, login, lockout, refresh com rotação e reuso, logout, JWT expirado, membership revogada, isolamento entre dois tenants, elevação de privilégio, estabelecimento de outra organização, tenant suspenso, acesso anônimo, Flyway V2, OpenAPI e constraints do PostgreSQL.
+
 ## Migrations
 
 Arquivos em `apps/api/src/main/resources/db/migration/`, padrão Flyway `V{versão}__descricao.sql`.
 
-A `V1` só habilita `pgcrypto`. Tabelas de pedidos, pagamentos e clientes ficam para os próximos checkpoints. O Flyway aplica as migrations na subida da API e nos testes.
+- `V1` habilita `pgcrypto`.
+- `V2` cria `users`, `organizations`, `establishments`, `organization_memberships`, `establishment_memberships` e `refresh_sessions`.
+
+Tabelas de pedidos, pagamentos e clientes ficam para os próximos checkpoints. O Flyway aplica as migrations na subida da API e nos testes.
 
 Não rode `flyway:repair` nem `flyway:clean` contra um banco compartilhado.
 
@@ -83,21 +135,20 @@ Não rode `flyway:repair` nem `flyway:clean` contra um banco compartilhado.
 
 | Sintoma | Causa provável |
 | --- | --- |
-| Contexto Spring não sobe no `local` | Variáveis `SABLI_DATASOURCE_*` ausentes |
+| Contexto Spring não sobe no `local` | Variáveis `SABLI_DATASOURCE_*` ou `SABLI_JWT_SECRET` ausentes |
+| Cadastro de organização 403 | Modo `BOOTSTRAP_TOKEN` sem convite, ou `DISABLED` |
 | Testcontainers falha | Docker parado |
 | 401 em `/actuator/health` | Caminho errado; o público é `/actuator/health` |
 | 403 com origem desconhecida | CORS recusou o `Origin`; ajuste `SABLI_CORS_ALLOWED_ORIGINS` |
 | Vitest timeout no CI | Jobs do frontend precisam permanecer sequenciais no mesmo runner |
 | `expectedHeadOid` no merge de PR | O GitHub exige SHA completa de 40 caracteres |
 
-## Limites desta fundação
+## Limites deste checkpoint
 
-- Sem login, JWT, RBAC ou usuário inicial.
-- Sem entidades de negócio.
-- Sem integração React → API.
+- Sem catálogo, mesas, pedidos, KDS, caixa ou faturamento.
+- Sem MFA.
+- Sem integração React → API. `SabliDataSource` e a sessão demonstrativa permanecem.
 - Actuator expõe só `health`, sem detalhes.
 - OpenAPI está no classpath, desligado por padrão e protegido por autenticação.
 - Micrometer/Prometheus não está exposto.
 - CORS aceita somente origens configuradas, sem credenciais.
-
-O próximo checkpoint (2.0B) trata identidade, organizações, estabelecimentos e isolamento multi-tenant.
