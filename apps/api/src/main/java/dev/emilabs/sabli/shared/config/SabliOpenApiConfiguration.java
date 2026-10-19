@@ -1,7 +1,9 @@
 package dev.emilabs.sabli.shared.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,11 +13,20 @@ public class SabliOpenApiConfiguration {
   @Bean
   OpenAPI sabliOpenApi() {
     return new OpenAPI()
+        .components(
+            new Components()
+                .addSecuritySchemes(
+                    "bearer-jwt",
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")
+                        .description("Access token de curta duração. O contexto de tenant é validado no servidor.")))
         .info(
             new Info()
                 .title("Sabli API")
                 .version("0.1.0")
                 .description(
-                    "Fundação do backend Sabli. Sem autenticação, RBAC ou operações de negócio neste checkpoint."));
+                    "Identidade, organizações, estabelecimentos e isolamento multi-tenant. Sem catálogo, pedidos, KDS ou caixa neste checkpoint."));
   }
 }
