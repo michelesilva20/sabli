@@ -27,6 +27,6 @@ public class SabliOpenApiConfiguration {
                 .title("Sabli API")
                 .version("0.1.0")
                 .description(
-                    "Identidade, catálogo e precificação de pizza por estabelecimento. Sem mesas, pedidos, KDS ou caixa neste checkpoint."));
+                    "Identidade, catálogo e mesas/atendimentos por estabelecimento. Pedidos, KDS e caixa ficam para os próximos checkpoints."));
   }
 }

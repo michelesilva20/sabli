@@ -54,7 +54,11 @@ public class ApiException extends RuntimeException {
   }
 
   public static ApiException conflict(String detail) {
-    return new ApiException(HttpStatus.CONFLICT, "Conflito", "CONFLICT", detail);
+    return conflict("CONFLICT", detail);
+  }
+
+  public static ApiException conflict(String code, String detail) {
+    return new ApiException(HttpStatus.CONFLICT, "Conflito", code, detail);
   }
 
   public static ApiException badRequest(String detail) {

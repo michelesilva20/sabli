@@ -21,7 +21,7 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
 
   @Test
   void appliesCatalogMigrationAgainstPostgres() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
     assertThat(
             jdbcTemplate.queryForObject(
                 "select extname from pg_extension where extname = 'pgcrypto'", String.class))
@@ -37,10 +37,10 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
                     'organization_memberships', 'establishment_memberships', 'refresh_sessions',
                     'catalog_categories', 'catalog_products', 'catalog_product_variants',
                     'pizza_settings', 'pizza_sizes', 'pizza_flavors', 'pizza_flavor_prices',
-                    'pizza_crusts', 'pizza_extras')
+                    'pizza_crusts', 'pizza_extras', 'dining_tables', 'table_services')
                 """,
                 Integer.class))
-        .isEqualTo(15);
+        .isEqualTo(17);
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -171,4 +171,134 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
                     categoryA))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
+
+  @Test
+  void postgresRejectsServiceLinkedToTableOfAnotherEstablishment() {
+    DiningSeed seed = insertDiningSeed();
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    insert into table_services
+                      (id, table_id, establishment_id, organization_id, guest_count, opened_by_user_id,
+                       host_name, opened_at, status, version, created_at, updated_at)
+                    values (?, ?, ?, ?, 1, ?, 'Host', now(), 'OPEN', 0, now(), now())
+                    """,
+                    UUID.randomUUID(),
+                    seed.tableA(),
+                    seed.estB(),
+                    seed.orgId(),
+                    seed.userId()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  void postgresRejectsTwoActiveServicesOnTheSameTable() {
+    DiningSeed seed = insertDiningSeed();
+    jdbcTemplate.update(
+        """
+        insert into table_services
+          (id, table_id, establishment_id, organization_id, guest_count, opened_by_user_id,
+           host_name, opened_at, status, version, created_at, updated_at)
+        values (?, ?, ?, ?, 1, ?, 'Host', now(), 'OPEN', 0, now(), now())
+        """,
+        UUID.randomUUID(),
+        seed.tableA(),
+        seed.estA(),
+        seed.orgId(),
+        seed.userId());
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    insert into table_services
+                      (id, table_id, establishment_id, organization_id, guest_count, opened_by_user_id,
+                       host_name, opened_at, status, version, created_at, updated_at)
+                    values (?, ?, ?, ?, 1, ?, 'Host', now(), 'OPEN', 0, now(), now())
+                    """,
+                    UUID.randomUUID(),
+                    seed.tableA(),
+                    seed.estA(),
+                    seed.orgId(),
+                    seed.userId()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  void postgresAllowsNewServiceAfterClosedHistory() {
+    DiningSeed seed = insertDiningSeed();
+    jdbcTemplate.update(
+        """
+        insert into table_services
+          (id, table_id, establishment_id, organization_id, guest_count, opened_by_user_id,
+           host_name, opened_at, closed_at, status, version, created_at, updated_at)
+        values (?, ?, ?, ?, 1, ?, 'Host', now(), now(), 'CLOSED', 0, now(), now())
+        """,
+        UUID.randomUUID(),
+        seed.tableA(),
+        seed.estA(),
+        seed.orgId(),
+        seed.userId());
+    jdbcTemplate.update(
+        """
+        insert into table_services
+          (id, table_id, establishment_id, organization_id, guest_count, opened_by_user_id,
+           host_name, opened_at, status, version, created_at, updated_at)
+        values (?, ?, ?, ?, 2, ?, 'Host', now(), 'OPEN', 0, now(), now())
+        """,
+        UUID.randomUUID(),
+        seed.tableA(),
+        seed.estA(),
+        seed.orgId(),
+        seed.userId());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "select count(*) from table_services where table_id = ?", Integer.class, seed.tableA()))
+        .isEqualTo(2);
+  }
+
+  private DiningSeed insertDiningSeed() {
+    UUID userId = UUID.randomUUID();
+    UUID orgId = UUID.randomUUID();
+    UUID estA = UUID.randomUUID();
+    UUID estB = UUID.randomUUID();
+    UUID tableA = UUID.randomUUID();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    jdbcTemplate.update(
+        """
+        insert into users (id, email, email_normalized, password_hash, name, status, failed_login_attempts, created_at, updated_at)
+        values (?, ?, ?, 'hash', 'Host', 'ACTIVE', 0, now(), now())
+        """,
+        userId,
+        "dining-" + suffix + "@example.com",
+        "dining-" + suffix + "@example.com");
+    jdbcTemplate.update(
+        """
+        insert into organizations (id, name, slug, status, created_at, updated_at)
+        values (?, 'Org Dining', ?, 'ACTIVE', now(), now())
+        """,
+        orgId,
+        "org-din-" + suffix);
+    jdbcTemplate.update(
+        """
+        insert into establishments (id, organization_id, name, slug, status, created_at, updated_at)
+        values (?, ?, 'Loja A', 'loja-a', 'ACTIVE', now(), now()), (?, ?, 'Loja B', 'loja-b', 'ACTIVE', now(), now())
+        """,
+        estA,
+        orgId,
+        estB,
+        orgId);
+    jdbcTemplate.update(
+        """
+        insert into dining_tables
+          (id, establishment_id, organization_id, number, seats, availability, status, version, created_at, updated_at)
+        values (?, ?, ?, 1, 4, 'AVAILABLE', 'ACTIVE', 0, now(), now())
+        """,
+        tableA,
+        estA,
+        orgId);
+    return new DiningSeed(userId, orgId, estA, estB, tableA);
+  }
+
+  private record DiningSeed(UUID userId, UUID orgId, UUID estA, UUID estB, UUID tableA) {}
 }
