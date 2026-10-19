@@ -1,6 +1,6 @@
 # Backend Sabli
 
-API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Este checkpoint cobre identidade e isolamento multi-tenant. Catálogo, mesas, pedidos, KDS e caixa ainda não existem no backend.
+API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade e catálogo (produtos, variações, pizza) estão persistidos. Mesas, pedidos, KDS e caixa ainda não existem no backend.
 
 ## Requisitos
 
@@ -143,9 +143,27 @@ Não rode `flyway:repair` nem `flyway:clean` contra um banco compartilhado.
 | Vitest timeout no CI | Jobs do frontend precisam permanecer sequenciais no mesmo runner |
 | `expectedHeadOid` no merge de PR | O GitHub exige SHA completa de 40 caracteres |
 
+## Catálogo
+
+Tudo vive no estabelecimento autenticado. IDs de outro tenant respondem 404. Estabelecimento suspenso bloqueia leitura e escrita comerciais.
+
+| Recurso | Caminho |
+| --- | --- |
+| Categorias | `GET/POST /api/v1/establishments/{id}/catalog/categories` |
+| Produtos | `GET/POST /catalog/products`, `GET/PATCH /products/{id}` |
+| Disponibilidade | `PATCH /products/{id}/availability` |
+| Variações | `POST/PATCH /products/{id}/variants` |
+| Pizza | `GET /catalog/pizza`, `PATCH /pizza/settings` |
+| Tamanhos, sabores, bordas, adicionais | `POST/PATCH /pizza/sizes\|flavors\|crusts\|extras` |
+| Cotação | `POST /catalog/pizza/quotes` — informativa, sem reserva |
+
+Preço em centavos. Estratégias `HIGHEST` (sabor mais caro) e `AVERAGE` (média half-up). Tamanhos são configuração; o motor não fixa Broto/Média/Grande/Família. Mapeamento TS: [catalog-contracts.md](catalog-contracts.md).
+
+`WAITER`, `KITCHEN` e `CASHIER` leem e cotam. Só `ADMIN`/`MANAGER` (org ou estabelecimento) alteram catálogo e preços.
+
 ## Limites deste checkpoint
 
-- Sem catálogo, mesas, pedidos, KDS, caixa ou faturamento.
+- Sem mesas, pedidos, KDS, caixa ou faturamento.
 - Sem MFA.
 - Sem integração React → API. `SabliDataSource` e a sessão demonstrativa permanecem.
 - Actuator expõe só `health`, sem detalhes.

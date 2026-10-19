@@ -4,7 +4,7 @@ Este documento descreve o ponto atual para continuar o trabalho. Não substitui 
 
 ## Em uma frase
 
-O Sabli é a plataforma SaaS da Emilabs para restaurantes e pizzarias. O frontend demonstrativo está na `main`. A API Java autentica usuários, persiste organizações/estabelecimentos e isola tenants. Ainda não há catálogo, pedidos, KDS nem caixa no backend.
+O Sabli é a plataforma SaaS da Emilabs para restaurantes e pizzarias. O frontend demonstrativo está na `main`. A API Java autentica tenants e persiste o catálogo (produtos, variações e precificação de pizza). Ainda não há mesas, pedidos, KDS nem caixa no backend.
 
 Slogan: **Seu negócio inteiro. Em um só lugar.**
 
@@ -21,7 +21,7 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 
 ## O que esta versão não é
 
-Não há pagamento de adquirente, persistência operacional no SPA, fiscal, delivery, reservas completas nem sincronização de KDS. A API em `apps/api` autentica de verdade, mas o SPA ainda usa fixtures e a sessão demonstrativa. Não ligar o React à API neste ponto nem inventar catálogo, pedidos, KDS ou caixa no backend.
+Não há pagamento de adquirente, persistência operacional no SPA, fiscal, delivery, reservas completas nem sincronização de KDS. A API em `apps/api` autentica e persiste o catálogo, mas o SPA ainda usa fixtures e a sessão demonstrativa. Não ligar o React à API neste ponto nem inventar mesas, pedidos, KDS ou caixa no backend.
 
 Esconder um módulo em Configurações só tira o item da navegação. A rota continua existindo.
 
@@ -29,7 +29,7 @@ Esconder um módulo em Configurações só tira o item da navegação. A rota co
 
 ```text
 src/                 SPA React (inalterado neste checkpoint)
-apps/api/            identidade, organizações, estabelecimentos e JWT
+apps/api/            identidade, catálogo e precificação de pizza
 .github/workflows/   CI
 ```
 
@@ -83,7 +83,7 @@ Estabelecimento de exemplo: Pizzaria do Centro. Operadora de exemplo: Mariana Al
 
 ## Git e entrega
 
-Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7 (`feat/api-foundation`). Identidade e isolamento seguem empilhados em `feat/identity-tenancy`, com base na #7 enquanto ela estiver aberta.
+Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8 (`feat/identity-tenancy`). Catálogo segue empilhado em `feat/catalog-pricing` sobre a #8.
 
 ## Como rodar
 
@@ -103,9 +103,9 @@ App em `http://127.0.0.1:5173/`. Node 22+ e npm 11+.
 
 ## Como continuar
 
-A identidade da API existe. O próximo checkpoint liga o SPA à autenticação real, sem ainda implementar catálogo, mesas, pedidos, KDS ou caixa no Java.
+O catálogo da API existe. O próximo checkpoint comercial é mesas/comandas no Java, ou a ligação do SPA à autenticação e ao catálogo real.
 
-O SPA continua falando com fixtures e com `demo/session.ts`. Não ligar o React à API neste ponto.
+O SPA continua falando com fixtures e com `demo/session.ts`. Não ligar o React à API neste ponto. Ver o mapeamento em [catalog-contracts.md](catalog-contracts.md).
 
 ## Referência visual
 

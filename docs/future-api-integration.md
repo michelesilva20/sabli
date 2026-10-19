@@ -1,6 +1,6 @@
 # Integração futura com a API Java
 
-A fundação Spring Boot está em `apps/api`. Ela ainda não expõe operações de negócio. O frontend continua em `SabliDataSource` (`src/shared/api/data-source.ts`) com fixtures e atraso curto.
+A API em `apps/api` já autentica e persiste o catálogo. O frontend continua em `SabliDataSource` (`src/shared/api/data-source.ts`) com fixtures e atraso curto. O mapeamento dos contratos está em [catalog-contracts.md](catalog-contracts.md).
 
 Quando a API existir, a troca prevista é substituir `mockDataSource` por um cliente HTTP, mantendo os mesmos métodos e os tipos de `src/shared/types/domain.ts`.
 
@@ -29,7 +29,7 @@ Essas operações precisarão de comandos idempotentes, conferência de estoque,
 
 ## Preço da pizza
 
-`calculatePizzaPrice` documenta duas regras de demonstração. O contrato final deve devolver o total calculado pela API, inclusive borda, adicionais, tamanho e estratégia configurada pelo estabelecimento. O navegador pode exibir uma prévia, mas o valor cobrado será o da resposta Java.
+`calculatePizzaPrice` no frontend permanece como prévia local. `POST /api/v1/establishments/{id}/catalog/pizza/quotes` já devolve o total do servidor (borda, adicionais, tamanho e estratégia). A cotação não reserva preço; o congelamento fica para o módulo de pedidos.
 
 ## Fora desta fundação
 
