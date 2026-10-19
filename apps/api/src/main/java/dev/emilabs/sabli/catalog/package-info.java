@@ -1,4 +1,4 @@
 /**
- * Catálogo de produtos, categorias e opções de pizza.
+ * Catálogo, variações, disponibilidade e precificação de pizza por estabelecimento.
  */
 package dev.emilabs.sabli.catalog;

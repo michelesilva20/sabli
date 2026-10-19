@@ -27,6 +27,6 @@ public class SabliOpenApiConfiguration {
                 .title("Sabli API")
                 .version("0.1.0")
                 .description(
-                    "Identidade, organizações, estabelecimentos e isolamento multi-tenant. Sem catálogo, pedidos, KDS ou caixa neste checkpoint."));
+                    "Identidade, catálogo e precificação de pizza por estabelecimento. Sem mesas, pedidos, KDS ou caixa neste checkpoint."));
   }
 }

@@ -20,8 +20,8 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
   private JdbcTemplate jdbcTemplate;
 
   @Test
-  void appliesIdentityMigrationAgainstPostgres() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+  void appliesCatalogMigrationAgainstPostgres() {
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
     assertThat(
             jdbcTemplate.queryForObject(
                 "select extname from pg_extension where extname = 'pgcrypto'", String.class))
@@ -34,10 +34,13 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
                 where table_schema = 'public'
                   and table_name in (
                     'users', 'organizations', 'establishments',
-                    'organization_memberships', 'establishment_memberships', 'refresh_sessions')
+                    'organization_memberships', 'establishment_memberships', 'refresh_sessions',
+                    'catalog_categories', 'catalog_products', 'catalog_product_variants',
+                    'pizza_settings', 'pizza_sizes', 'pizza_flavors', 'pizza_flavor_prices',
+                    'pizza_crusts', 'pizza_extras')
                 """,
                 Integer.class))
-        .isEqualTo(6);
+        .isEqualTo(15);
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -118,6 +121,54 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
                     UUID.randomUUID(),
                     email,
                     email))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  void postgresRejectsProductLinkedToCategoryOfAnotherEstablishment() {
+    UUID orgId = UUID.randomUUID();
+    UUID estA = UUID.randomUUID();
+    UUID estB = UUID.randomUUID();
+    UUID categoryA = UUID.randomUUID();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    jdbcTemplate.update(
+        """
+        insert into organizations (id, name, slug, status, created_at, updated_at)
+        values (?, 'Org Cat', ?, 'ACTIVE', now(), now())
+        """,
+        orgId,
+        "org-cat-" + suffix);
+    jdbcTemplate.update(
+        """
+        insert into establishments (id, organization_id, name, slug, status, created_at, updated_at)
+        values (?, ?, 'Loja A', 'loja-a', 'ACTIVE', now(), now()), (?, ?, 'Loja B', 'loja-b', 'ACTIVE', now(), now())
+        """,
+        estA,
+        orgId,
+        estB,
+        orgId);
+    jdbcTemplate.update(
+        """
+        insert into catalog_categories
+          (id, establishment_id, organization_id, name, slug, sort_order, status, created_at, updated_at)
+        values (?, ?, ?, 'Bebidas', 'bebidas', 0, 'ACTIVE', now(), now())
+        """,
+        categoryA,
+        estA,
+        orgId);
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    """
+                    insert into catalog_products
+                      (id, establishment_id, organization_id, category_id, name, slug, description, kind,
+                       available, status, sort_order, version, created_at, updated_at)
+                    values (?, ?, ?, ?, 'Refri', 'refri', '', 'STANDARD', true, 'ACTIVE', 0, 0, now(), now())
+                    """,
+                    UUID.randomUUID(),
+                    estB,
+                    orgId,
+                    categoryA))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 }
