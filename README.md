@@ -1,10 +1,10 @@
 # Sabli
 
-Fundação de frontend do **Sabli**, plataforma SaaS da **Emilabs** para gestão de restaurantes e pizzarias.
+Plataforma SaaS da **Emilabs** para gestão de restaurantes e pizzarias.
 
 Slogan: **Seu negócio inteiro. Em um só lugar.**
 
-Esta versão é uma aplicação demonstrativa. O frontend ainda não fala com a API. Não há autenticação real, pagamento de adquirente, persistência operacional no SPA nem emissão fiscal.
+O frontend React opera em dois modos: **DEMO** (fixtures e sessão volátil) e **API** (login real contra o Java em `apps/api`). O panorama completo do projeto está em [docs/projeto.md](docs/projeto.md).
 
 ## Requisitos
 
@@ -22,7 +22,7 @@ npm install
 
 | Comando             | O que faz                                   |
 | ------------------- | ------------------------------------------- |
-| `npm run dev`       | Sobe o Vite em desenvolvimento              |
+| `npm run dev`       | Sobe o Vite em desenvolvimento (DEMO)       |
 | `npm run typecheck` | Verifica o TypeScript estrito               |
 | `npm run lint`      | Roda o ESLint                               |
 | `npm run test`      | Roda os testes unitários e de componente    |
@@ -32,6 +32,8 @@ npm install
 
 A rota `/design-system` existe apenas com `npm run dev`. Ela não entra no roteador dos builds de produção.
 
+Modo API no PowerShell: `$env:VITE_SABLI_MODE='api'; npm run dev`, com a API no ar.
+
 ## API
 
 A fundação Java vive em `apps/api`. Instruções, variáveis e limites: [backend](docs/backend.md).
@@ -39,18 +41,19 @@ A fundação Java vive em `apps/api`. Instruções, variáveis e limites: [backe
 ## Estrutura
 
 ```text
-src/                 SPA React (demonstração)
-apps/api/            Fundação Spring Boot
+src/                 SPA React (DEMO + cliente HTTP)
+apps/api/            Spring Boot (identidade até o caixa)
 .github/workflows/   CI do frontend e da API
+docs/projeto.md      Handbook vivo do produto
 ```
 
 A referência visual aprovada está em `Montagem UI SaaS para Pizzaria.png`.
 
 ## Documentação
 
-- [Estado atual](docs/estado-atual.md)
+- [Projeto (completo)](docs/projeto.md)
 - [Design system](docs/design-system.md)
 - [Arquitetura](docs/frontend-architecture.md)
 - [Telas](docs/screens.md)
-- [Integração futura com a API](docs/future-api-integration.md)
+- [Integração com a API](docs/future-api-integration.md)
 - [Backend](docs/backend.md)
