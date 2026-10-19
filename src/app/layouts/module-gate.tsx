@@ -6,7 +6,7 @@ import { EmptyState } from '@/design-system/components/feedback';
 import { isApiMode } from '@/shared/config/runtime';
 import type { ModuleId } from '@/shared/types/domain';
 
-const apiReady: ModuleId[] = ['home', 'settings', 'products', 'pos'];
+const apiReady: ModuleId[] = ['home', 'settings', 'products', 'pos', 'tables'];
 
 export function ModuleGate({ module, children }: { module: ModuleId; children: ReactNode }) {
   const enabled = useUiStore((state) => state.enabledModules.includes(module));

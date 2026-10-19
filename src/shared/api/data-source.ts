@@ -22,7 +22,7 @@ function wait<T>(value: T): Promise<T> {
   });
 }
 
-/** Fonte DEMO. O modo API usa `src/shared/api/catalog.ts` e a sessão autenticada. */
+/** Fonte DEMO. O modo API usa `src/shared/api/catalog.ts`, `src/shared/api/dining.ts` e a sessão autenticada. */
 export interface SabliDataSource {
   listEstablishments(): Promise<typeof establishments>;
   getDashboard(establishmentId: string, period: DashboardPeriod): Promise<DashboardSnapshot>;

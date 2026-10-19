@@ -1,6 +1,6 @@
 # Contratos de mesas e atendimento (Java ↔ TypeScript)
 
-O SPA ainda usa `demo/session.ts` e fixtures. Esta tabela documenta o mapeamento para a integração posterior. Não substitua o data source neste checkpoint.
+No modo API, o SPA consome `src/shared/api/dining.ts`. O modo DEMO continua em `demo/session.ts` e fixtures, sem fallback silencioso.
 
 ## Fonte da verdade
 

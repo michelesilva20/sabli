@@ -14,7 +14,7 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 - Três superfícies: painel administrativo (`BusinessLayout`), cozinha (`/cozinha`) e atendimento do garçom (`/atendimento`).
 - Modo definido por `VITE_SABLI_MODE` (`demo` ou `api`), validado na subida. Erro HTTP **não** volta ao DEMO.
 - DEMO: leituras em `SabliDataSource`, escritas em `src/shared/demo/session.ts`. Sem API, sem PostgreSQL.
-- API: cliente HTTP central (`src/shared/api/http-client.ts`), access token só em memória, refresh no cookie HttpOnly, rotas `/entrar` e `/selecionar-estabelecimento`.
+- API: cliente HTTP central (`src/shared/api/http-client.ts`), access token só em memória, refresh no cookie HttpOnly, rotas `/entrar` e `/selecionar-estabelecimento`. Catálogo e mesas já consomem o PostgreSQL.
 - Dinheiro entra e sai em centavos inteiros. A tela formata com `formatBRL`.
 - Tema claro, escuro ou sistema em `localStorage` (`sabli-theme`).
 - Preferências de interface (sidebar, estabelecimento DEMO, módulos visíveis) ficam no Zustand, chave `sabli-ui`. Tokens **não** entram aí.
@@ -22,7 +22,7 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 
 ## O que esta versão não é
 
-Não há pagamento de adquirente, fiscal, delivery, reservas completas nem sincronização de KDS. No modo API, o catálogo já consome o backend. Mesas, pedidos, cozinha, comandas e caixa ainda avisam que o módulo não está disponível. O PDV consulta o cardápio e cota pizza, mas não confirma pedido. Esconder um módulo em Configurações só altera a navegação da demonstração.
+Não há pagamento de adquirente, fiscal, delivery, reservas completas nem sincronização de KDS. No modo API, catálogo e mesas já consomem o backend. Pedidos, cozinha, comandas e caixa ainda avisam que o módulo não está disponível. O PDV consulta o cardápio e cota pizza, mas não confirma pedido. Encerrar atendimento real permanece oculto até Billing e Caixa. Esconder um módulo em Configurações só altera a navegação da demonstração.
 
 ## Onde o código vive
 
@@ -41,7 +41,7 @@ Componentes visuais não importam fixtures e não chamam `fetch`. Dados reais pa
 | `/entrar` | Nova | Login real no modo API. No DEMO redireciona ao início. |
 | `/selecionar-estabelecimento` | Nova | Lista orgs/lojas de `/me` e valida `POST /me/context`. |
 | `/inicio` | Fundação | DEMO: indicadores de exemplo. API: contexto autorizado, sem fixtures. |
-| `/mesas` | Fundação | DEMO operacional. API: estado explícito de módulo não ligado. |
+| `/mesas` | Fundação | DEMO operacional. API: mapa, abertura, conta e reabertura reais. |
 | `/pedidos` | Polida | DEMO operacional. API: não ligado. |
 | `/pdv` | Fundação | DEMO operacional. API: consulta o catálogo, sem enviar pedido. |
 | `/pdv/montar-pizza` | Fundação | DEMO operacional. API: cotação do servidor, sem adicionar ao pedido. |
@@ -83,7 +83,7 @@ Estabelecimento de exemplo no DEMO: Pizzaria do Centro. Operadora: Mariana Alves
 
 ## Git e entrega
 
-Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11. Caixa na PR #12. Autenticação React segue empilhada em `feat/auth-session` sobre a #12.
+Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11. Caixa na PR #12. Autenticação React na #13. Catálogo React na #14. Mesas React segue empilhada em `feat/dining-api` sobre a #14.
 
 ## Como rodar
 
@@ -111,7 +111,7 @@ No PowerShell: `$env:VITE_SABLI_MODE='api'; npm run dev` com a API no ar.
 
 ## Como continuar
 
-O próximo passo comercial é ligar mesas e o ciclo de pedidos do SPA à API já autenticada (Checkpoint 2.1C). Não iniciar isso automaticamente.
+O próximo passo comercial é ligar pedidos e o ciclo da comanda do SPA à API já autenticada (Checkpoint 2.1D). Não iniciar isso automaticamente.
 
 ## Referência visual
 

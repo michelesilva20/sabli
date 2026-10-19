@@ -27,7 +27,21 @@ async function mockApi(page: Page, signedIn = false, lastContext = false) {
   await page.route(`${API}/**`, async (route) => {
     const url = route.request().url();
     const method = route.request().method();
-    if (method === 'POST' && url.endsWith('/auth/login')) {
+    const path = new URL(url).pathname.replace(/\/$/, '');
+    if (method === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': 'http://127.0.0.1:4174',
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Allow-Headers': 'authorization,content-type',
+          'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+        },
+        body: '',
+      });
+      return;
+    }
+    if (method === 'POST' && path.endsWith('/auth/login')) {
       const body = route.request().postDataJSON() as { email?: string; password?: string };
       if (body.email !== 'ana.e2e@example.com' || body.password !== 'password10') {
         await route.fulfill({
@@ -53,7 +67,7 @@ async function mockApi(page: Page, signedIn = false, lastContext = false) {
       });
       return;
     }
-    if (method === 'POST' && url.endsWith('/auth/refresh')) {
+    if (method === 'POST' && path.endsWith('/auth/refresh')) {
       if (!session) {
         await route.fulfill({
           status: 401,
@@ -69,26 +83,27 @@ async function mockApi(page: Page, signedIn = false, lastContext = false) {
       });
       return;
     }
-    if (method === 'POST' && url.endsWith('/auth/logout')) {
+    if (method === 'POST' && path.endsWith('/auth/logout')) {
       session = false;
       await route.fulfill({ status: 204, body: '' });
       return;
     }
-    if (method === 'GET' && url.endsWith('/me')) {
+    if (method === 'GET' && path.endsWith('/me')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: { 'Cache-Control': 'no-store' },
         body: JSON.stringify({ ...me, lastOrganizationId, lastEstablishmentId }),
       });
       return;
     }
-    if (method === 'DELETE' && url.endsWith('/me/context')) {
+    if (method === 'DELETE' && path.endsWith('/me/context')) {
       lastOrganizationId = undefined;
       lastEstablishmentId = undefined;
       await route.fulfill({ status: 204, body: '' });
       return;
     }
-    if (method === 'POST' && url.endsWith('/me/context')) {
+    if (method === 'POST' && path.endsWith('/me/context')) {
       const body = route.request().postDataJSON() as { establishmentId?: string };
       const establishment =
         body.establishmentId === estBairroId ? me.establishments[1] : me.establishments[0];
@@ -135,9 +150,24 @@ test('login e seleção de estabelecimento no modo API', async ({ page }) => {
 });
 
 test('restaura o estabelecimento autorizado após recarregar', async ({ page }) => {
-  await mockApi(page, true, true);
-  await page.goto('/inicio');
+  const apiCalls: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/')) {
+      apiCalls.push(`${request.method()} ${request.url()}`);
+    }
+  });
+  await mockApi(page);
+  await page.goto('/entrar');
+  await page.getByLabel(/e-mail/i).fill('ana.e2e@example.com');
+  await page.getByLabel(/senha/i).fill('password10');
+  await page.getByRole('button', { name: 'Entrar' }).click();
+  await expect(page.getByRole('heading', { name: 'Onde você vai operar?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Entrar' }).first().click();
   await expect(page.getByRole('heading', { name: 'Início' })).toBeVisible();
+  apiCalls.length = 0;
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Início' })).toBeVisible();
+  expect(apiCalls.some((call) => call.includes('/me/context'))).toBeTruthy();
   await expect(page.locator('#conteudo').getByText('Loja Centro', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Onde você vai operar?' })).toHaveCount(0);
 });
