@@ -4,12 +4,13 @@ Fundação de frontend do **Sabli**, plataforma SaaS da **Emilabs** para gestão
 
 Slogan: **Seu negócio inteiro. Em um só lugar.**
 
-Esta versão é uma aplicação demonstrativa. Ela não possui backend, autenticação, pagamento real, persistência operacional nem emissão fiscal.
+Esta versão é uma aplicação demonstrativa. O frontend ainda não fala com a API. Não há autenticação real, pagamento de adquirente, persistência operacional no SPA nem emissão fiscal.
 
 ## Requisitos
 
 - Node.js 22 ou superior
 - npm 11 ou superior
+- JDK 25 LTS e Docker, para a API em `apps/api`
 
 ## Instalação
 
@@ -31,15 +32,16 @@ npm install
 
 A rota `/design-system` existe apenas com `npm run dev`. Ela não entra no roteador dos builds de produção.
 
+## API
+
+A fundação Java vive em `apps/api`. Instruções, variáveis e limites: [backend](docs/backend.md).
+
 ## Estrutura
 
 ```text
-src/
-├── app/             providers, rotas, layouts e preferências de interface
-├── design-system/   Sabli UI: tokens, primitives e padrões
-├── features/        telas de negócio
-├── shared/          tipos, domínio, fixtures e acesso a dados
-└── main.tsx
+src/                 SPA React (demonstração)
+apps/api/            Fundação Spring Boot
+.github/workflows/   CI do frontend e da API
 ```
 
 A referência visual aprovada está em `Montagem UI SaaS para Pizzaria.png`.
@@ -51,3 +53,4 @@ A referência visual aprovada está em `Montagem UI SaaS para Pizzaria.png`.
 - [Arquitetura](docs/frontend-architecture.md)
 - [Telas](docs/screens.md)
 - [Integração futura com a API](docs/future-api-integration.md)
+- [Backend](docs/backend.md)
