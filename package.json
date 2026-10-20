@@ -3,8 +3,18 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
+    "dev:demo": "vite",
+    "dev:api": "vite --mode api",
+    "dev:seed": "node scripts/dev-seed.mjs",
+    "db:up": "node scripts/db.mjs up",
+    "db:down": "node scripts/db.mjs down",
+    "api:dev": "node scripts/api-dev.mjs",
+    "api:test": "node scripts/api-verify.mjs",
     "build": "npm run typecheck && vite build",
     "build:api": "vite build --outDir dist-api --mode api",
     "preview": "vite preview",

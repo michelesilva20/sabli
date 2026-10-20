@@ -1,6 +1,6 @@
 # Estado atual do Sabli
 
-Este documento descreve o ponto atual para continuar o trabalho. Não substitui as outras referências: [design system](design-system.md), [arquitetura](frontend-architecture.md), [telas](screens.md), [API futura](future-api-integration.md) e [backend](backend.md).
+Este documento descreve o ponto atual para continuar o trabalho. Não substitui as outras referências: [desenvolvimento local](desenvolvimento-local.md), [arquitetura](arquitetura.md), [design system](design-system.md), [frontend](frontend-architecture.md), [telas](screens.md), [contratos API](future-api-integration.md) e [backend](backend.md).
 
 ## Em uma frase
 
@@ -84,31 +84,32 @@ Estabelecimento de exemplo no DEMO: Pizzaria do Centro. Operadora: Mariana Alves
 
 ## Git e entrega
 
-Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11. Caixa na PR #12. Autenticação React na #13. Catálogo React na #14. Mesas React na #15. Pedidos/KDS React segue empilhada em `feat/orders-api` (PR #16). Billing/caixa React segue em `feat/billing-api` (PR #18). Estabilização e E2E real seguem em `fix/empty-service-close`.
+Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A linha de produto está empilhada e linear até `fix/empty-service-close` (`7b87022`, PR #19, CI verde). DX e setup local seguem em `chore/local-dev`. Plano de merge, dependências e a PR #17 (handbook, fora da linha): [consolidação Git](git-consolidacao.md). **Não mergear `main` sem aprovação humana.**
 
 ## Como rodar
 
-```bash
-npm install
-npm run dev
+Guia completo: [desenvolvimento local](desenvolvimento-local.md).
+
+```powershell
+npm ci
+npm run db:up
+npm run api:dev
+npm run dev:seed
+npm run dev:api
 ```
 
-App DEMO em `http://127.0.0.1:5173/`. Node 22+ e npm 11+.
-
-Modo API:
-
-```bash
-VITE_SABLI_MODE=api VITE_SABLI_API_BASE_URL=http://127.0.0.1:8080 npm run dev
-```
-
-No PowerShell: `$env:VITE_SABLI_MODE='api'; npm run dev` com a API no ar.
+DEMO sem API: `npm run dev` → `http://127.0.0.1:5173/`. Node 22+ e npm 11+. JDK 25 e Docker para a API.
 
 | Comando | Uso |
 | ------- | --- |
-| `npm run dev` | Desenvolvimento (DEMO por padrão) |
-| `npm run test` | Vitest |
-| `npm run test:e2e` | Playwright mockado (DEMO em 4173, login API em 4174) |
-| `npm run test:e2e:real` | Playwright contra API Java e PostgreSQL em `4175` |
+| `npm run dev` / `npm run dev:demo` | Vite DEMO |
+| `npm run dev:api` | Vite modo API |
+| `npm run db:up` / `npm run db:down` | PostgreSQL local |
+| `npm run api:dev` / `npm run api:test` | API local / JUnit |
+| `npm run dev:seed` | Organização e catálogo mínimos |
+| `npm test` | Vitest |
+| `npm run test:e2e` | Playwright mockado (4173 / 4174) |
+| `npm run test:e2e:real` | Playwright contra API e PostgreSQL (4175) |
 | `npm run lint` / `npm run typecheck` / `npm run build` | Qualidade e build |
 
 ## Limitações para homologação
@@ -124,7 +125,7 @@ No PowerShell: `$env:VITE_SABLI_MODE='api'; npm run dev` com a API no ar.
 
 ## Como continuar
 
-O ciclo operacional persistente está pronto para avaliação de homologação. Não iniciar módulos novos automaticamente.
+O ciclo operacional persistente está na ponta `fix/empty-service-close`. A consolidação na `main` espera aprovação humana (ordem em [git-consolidacao](git-consolidacao.md)). Não iniciar Relatórios nem Equipe automaticamente. Não há hospedagem neste checkpoint.
 
 ## Referência visual
 
