@@ -1,78 +1,47 @@
 # Consolidação Git
 
-Plano para integrar a linha de produto na `main`. **Nenhum merge neste documento foi executado.** Merge em `main` exige aprovação humana explícita.
+Registro da integração da linha de produto na `main`. Executado em 20 de outubro de 2026 (checkpoint 2.2A.1).
 
-Inspecionado em 20 de outubro de 2026 a partir de `fix/empty-service-close` (`7b87022`).
+## Resultado
 
-## Estado real
+| | SHA |
+| --- | --- |
+| `main` antes | `20c74eb` (PR #6) |
+| `main` depois | `6bbc89f` (merge da PR #20) |
+| Ponta do produto | `81208a0` (ancestral de `6bbc89f`) |
 
-`main` está em `20c74eb` (merge da PR #6). A linha de produto já é ancestral linear até `7b87022`. Não é necessário recriar histórico nem force push.
+13 PRs integradas com **merge commit**, sem squash e sem force push. Branches originais preservadas. A PR **#17 não entrou**.
 
-A branch `chore/local-dev` (este checkpoint) empilha DX e documentação sobre `fix/empty-service-close`.
+CI da ponta: [run 39454787303](https://github.com/michelesilva20/sabli/actions/runs/39454787303) — Frontend, API, Playwright mockado e Playwright real verdes.
 
-## PRs abertas da linha de produto
+## Ordem executada
 
-Ordem de dependência (base → head). Todas `MERGEABLE` no GitHub no momento da inspeção.
+| PR | Head | Merge SHA |
+| --- | --- | --- |
+| [#7](https://github.com/michelesilva20/sabli/pull/7) | `feat/api-foundation` | `b56d207` |
+| [#8](https://github.com/michelesilva20/sabli/pull/8) | `feat/identity-tenancy` | `197c1f7` |
+| [#9](https://github.com/michelesilva20/sabli/pull/9) | `feat/catalog-pricing` | `434b104` |
+| [#10](https://github.com/michelesilva20/sabli/pull/10) | `feat/tables-service` | `f47b7c9` |
+| [#11](https://github.com/michelesilva20/sabli/pull/11) | `feat/orders-kitchen` | `1bf26ae` |
+| [#12](https://github.com/michelesilva20/sabli/pull/12) | `feat/billing-cash` | `90f66f2` |
+| [#13](https://github.com/michelesilva20/sabli/pull/13) | `feat/auth-session` | `66240bd` |
+| [#14](https://github.com/michelesilva20/sabli/pull/14) | `feat/catalog-api` | `9a2693e` |
+| [#15](https://github.com/michelesilva20/sabli/pull/15) | `feat/dining-api` | `18645f6` |
+| [#16](https://github.com/michelesilva20/sabli/pull/16) | `feat/orders-api` | `c4af6eb` |
+| [#18](https://github.com/michelesilva20/sabli/pull/18) | `feat/billing-api` | `c7a991a` |
+| [#19](https://github.com/michelesilva20/sabli/pull/19) | `fix/empty-service-close` | `f87a3ee` |
+| [#20](https://github.com/michelesilva20/sabli/pull/20) | `chore/local-dev` | `6bbc89f` |
 
-| Ordem | PR | Head | Base | CI na inspeção |
-| --- | --- | --- | --- | --- |
-| 1 | [#7](https://github.com/michelesilva20/sabli/pull/7) | `feat/api-foundation` | `main` | verde |
-| 2 | [#8](https://github.com/michelesilva20/sabli/pull/8) | `feat/identity-tenancy` | `feat/api-foundation` | verde |
-| 3 | [#9](https://github.com/michelesilva20/sabli/pull/9) | `feat/catalog-pricing` | `feat/identity-tenancy` | verde |
-| 4 | [#10](https://github.com/michelesilva20/sabli/pull/10) | `feat/tables-service` | `feat/catalog-pricing` | verde |
-| 5 | [#11](https://github.com/michelesilva20/sabli/pull/11) | `feat/orders-kitchen` | `feat/tables-service` | verde |
-| 6 | [#12](https://github.com/michelesilva20/sabli/pull/12) | `feat/billing-cash` | `feat/orders-kitchen` | verde |
-| 7 | [#13](https://github.com/michelesilva20/sabli/pull/13) | `feat/auth-session` | `feat/billing-cash` | verde |
-| 8 | [#14](https://github.com/michelesilva20/sabli/pull/14) | `feat/catalog-api` | `feat/auth-session` | Playwright **vermelho histórico**; as PRs posteriores passaram |
-| 9 | [#15](https://github.com/michelesilva20/sabli/pull/15) | `feat/dining-api` | `feat/catalog-api` | verde |
-| 10 | [#16](https://github.com/michelesilva20/sabli/pull/16) | `feat/orders-api` | `feat/dining-api` | verde |
-| 11 | [#18](https://github.com/michelesilva20/sabli/pull/18) | `feat/billing-api` | `feat/orders-api` | verde |
-| 12 | [#19](https://github.com/michelesilva20/sabli/pull/19) | `fix/empty-service-close` | `feat/billing-api` | 4 jobs verdes, inclusive E2E real |
-| 13 | DX | `chore/local-dev` | `fix/empty-service-close` | após o CI desta PR |
+Cada PR empilhada foi retargetada para `main` só depois da anterior.
 
-Merge na ordem acima, um PR por vez, **sem squash** para preservar a história. Depois de cada merge, o GitHub costuma retargetar o próximo para `main`. Conferir a base antes do merge seguinte.
+A #14 tinha Playwright histórico vermelho. O código é ancestral das PRs seguintes, cuja suíte passou.
 
-Não apagar branches. Não force push.
+## PR #17
 
-## Fora da linha de merge
+A [#17](https://github.com/michelesilva20/sabli/pull/17) (`docs/projeto` ← `feat/orders-api`) permanece **aberta e fora da `main`**.
 
-**PR [#17](https://github.com/michelesilva20/sabli/pull/17)** (`docs/projeto` ← `feat/orders-api`) **não entra nesta sequência.**
-
-- Não é ancestral de `#18`/`#19`.
-- Substitui `docs/estado-atual.md` por um handbook que ainda afirma comandas/caixa React desligados.
-- Conflitaria com `#18`/`#19`/`chore/local-dev` em README e estado atual.
-
-Depois da `main` conter `#19` + DX, atualizar o handbook contra o estado real (V8, billing ligado, setup local) e só então reabrir ou retargetar `#17`.
-
-## Conflitos
-
-GitHub marca `#7`–`#19` (exceto o conteúdo stale de `#17`) como `MERGEABLE` nas bases empilhadas. O risco aparece se alguém mergear fora de ordem ou mergear `#17` no meio da pilha.
-
-A ponta `7b87022` já contém `#7`–`#16` + `#18` + `#19`. Uma branch temporária de integração não foi criada porque seria idêntica à ponta.
-
-## Validações nesta branch de DX
-
-Executado sobre `chore/local-dev` (acima de `7b87022`):
-
-- Typecheck e lint do SPA
-- Vitest: 152 testes
-- Maven `verify`: 96 testes
-- Playwright mockado: 12 testes
-- Playwright real: 2 testes (API + PostgreSQL 17 local)
-- Seed local idempotente (`npm run dev:seed`)
-
-Nenhum merge em `main` foi feito.
+O handbook daquela branch afirma comandas/caixa React desligados e Flyway só até V7. Não deve ser mergeada. A atualização do handbook sai de uma branch nova a partir desta `main`.
 
 ## Rollback
 
-Se um merge em `main` quebrar CI:
-
-1. Não force push em `main`.
-2. `git revert -m 1 <merge-sha>` na ordem inversa dos merges.
-3. Branches originais permanecem no remoto para reabrir PR.
-
-## O que precisa de aprovação humana
-
-- Merge de `#7` até `#19` em `main`
-- Merge de `chore/local-dev` depois de `#19`
-- Destino da `#17` (rebase/reescrita, não merge cego)
+Não force push. Se precisar reverter: `git revert -m 1` na ordem inversa, de `6bbc89f` até `b56d207`.

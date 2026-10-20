@@ -105,6 +105,7 @@ Projeto de portfólio, não um produto em produção. Sem cloud, homologação o
 
 ## Documentação
 
+- [Handbook](docs/projeto.md)
 - [Desenvolvimento local](docs/desenvolvimento-local.md)
 - [Arquitetura](docs/arquitetura.md)
 - [Estado atual](docs/estado-atual.md)
