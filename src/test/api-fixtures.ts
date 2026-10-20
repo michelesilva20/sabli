@@ -92,6 +92,12 @@ export function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-export function problem(status: number, code: string, title: string, detail: string): Response {
-  return jsonResponse({ status, code, title, detail }, status);
+export function problem(
+  status: number,
+  code: string,
+  title: string,
+  detail: string,
+  extra?: Record<string, unknown>,
+): Response {
+  return jsonResponse({ status, code, title, detail, ...extra }, status);
 }

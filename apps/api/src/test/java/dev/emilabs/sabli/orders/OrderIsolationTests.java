@@ -429,6 +429,43 @@ class OrderIsolationTests extends OrdersSupport {
         .andExpect(jsonPath("$.code").value("INVALID_TRANSITION"));
   }
 
+  @Test
+  void rejectsStaleExpectedTotalWithoutPersistingThenAcceptsRetry() throws Exception {
+    Tenant tenant = registerTenant("drift");
+    JsonNode drink = createDrink(tenant);
+    String body =
+        """
+        {"channel":"COUNTER","expectedTotalCents":700,"items":[{"productId":"%s","quantity":1}]}
+        """.formatted(drink.get("id").asText());
+    mockMvc
+        .perform(
+            post(orders(tenant.establishmentId()))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .header("Idempotency-Key", "price-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("PRICE_CHANGED"))
+        .andExpect(jsonPath("$.expectedTotalCents").value(700))
+        .andExpect(jsonPath("$.actualTotalCents").value(800));
+    mockMvc
+        .perform(
+            get(orders(tenant.establishmentId()))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.total").value(0));
+    JsonNode confirmed =
+        postJson(
+            tenant.accessToken(),
+            orders(tenant.establishmentId()),
+            """
+            {"channel":"COUNTER","expectedTotalCents":800,"items":[{"productId":"%s","quantity":1}]}
+            """.formatted(drink.get("id").asText()),
+            201,
+            "price-1");
+    assertThat(confirmed.get("totalCents").asInt()).isEqualTo(800);
+  }
+
   private int postStatus(String token, String path, String body, String key, CountDownLatch start) throws Exception {
     start.await(5, TimeUnit.SECONDS);
     return mockMvc

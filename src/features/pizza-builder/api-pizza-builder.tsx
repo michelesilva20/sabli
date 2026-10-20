@@ -5,9 +5,12 @@ import { Alert, EmptyState, Skeleton } from '@/design-system/components/feedback
 import { Button } from '@/design-system/components/button';
 import { RadioGroup } from '@/design-system/components/choice';
 import { QuantityInput } from '@/design-system/components/number-input';
-import { usePizzaMenuQuery, usePizzaQuoteQuery } from '@/shared/api/catalog-queries';
+import { pushToast } from '@/design-system/components/toast';
+import { useCatalogProductsQuery, usePizzaMenuQuery, usePizzaQuoteQuery } from '@/shared/api/catalog-queries';
 import { strategyLabel } from '@/shared/api/catalog';
+import { canPlaceOrder, useAuthSession } from '@/shared/auth/session';
 import { formatBRL } from '@/shared/domain/money';
+import { addDraftLine } from '@/shared/orders/order-draft';
 import { cn } from '@/shared/utils/cn';
 
 export function ApiPizzaBuilderPage() {
@@ -17,7 +20,7 @@ export function ApiPizzaBuilderPage() {
       <div>
         <h1 className="text-2xl font-extrabold">Montar pizza</h1>
         <p className="text-sm text-muted-foreground">
-          Tamanhos, sabores e preço vêm do servidor. A cotação não confirma pedido.
+          Tamanhos, sabores e preço vêm do servidor. A cotação não reserva o valor.
         </p>
       </div>
       <ApiPizzaBuilder />
@@ -27,7 +30,10 @@ export function ApiPizzaBuilderPage() {
 
 export function ApiPizzaBuilder() {
   const navigate = useNavigate();
+  const session = useAuthSession();
+  const canSend = canPlaceOrder(session.context);
   const menu = usePizzaMenuQuery();
+  const products = useCatalogProductsQuery({ page: 0, size: 40 });
   const [sizeId, setSizeId] = useState('');
   const [flavorIds, setFlavorIds] = useState<string[]>([]);
   const [crustId, setCrustId] = useState('none');
@@ -73,11 +79,44 @@ export function ApiPizzaBuilder() {
     );
   }
 
+  const quoteFresh = Boolean(quote.data && !quote.isFetching && !overLimit && flavorIds.length > 0);
+  const pizzaProduct = products.data?.items.find((item) => item.kind === 'PIZZA' && item.available);
+
+  function addToDraft() {
+    if (!canSend || !quoteFresh || !quote.data || !size) return;
+    const crust = crusts.find((item) => item.id === crustId);
+    addDraftLine({
+      productId: pizzaProduct?.id ?? '',
+      kind: 'PIZZA',
+      name: `Pizza ${size.name}`,
+      quantity,
+      quotedUnitCents: quote.data.unitCents,
+      pizza: {
+        sizeId: size.id,
+        sizeName: size.name,
+        flavorIds,
+        flavors: flavors.filter((flavor) => flavorIds.includes(flavor.id)).map((flavor) => ({
+          id: flavor.id,
+          name: flavor.name,
+        })),
+        crustId: crust?.id,
+        crustName: crust?.name,
+        extraIds,
+        extras: extras.filter((extra) => extraIds.includes(extra.id)).map((extra) => ({
+          id: extra.id,
+          name: extra.name,
+        })),
+      },
+    });
+    pushToast({ title: 'Pizza adicionada ao pedido', tone: 'success' });
+    navigate('/pdv');
+  }
+
   return (
     <div className="grid gap-5">
-      <Alert title="Pedido ainda não é enviado neste modo">
-        Você pode montar e ver a cotação do servidor. A confirmação real chega em um próximo
-        checkpoint.
+      <Alert title="A cotação não reserva preço">
+        O servidor recalcula o valor na confirmação. Se o catálogo mudar, você confirma o total
+        atualizado.
       </Alert>
       <section className="grid gap-2">
         <h2 className="text-sm font-extrabold">Tamanho</h2>
@@ -161,14 +200,21 @@ export function ApiPizzaBuilder() {
       </section>
       <QuantityInput value={quantity} onChange={setQuantity} min={1} max={20} label="Quantidade" />
       {quote.isFetching ? <p className="text-xs font-bold text-muted-foreground">Cotando no servidor…</p> : null}
-      {quote.data && !overLimit ? (
+      {quote.isError ? (
+        <Alert title="Falha na cotação" tone="warning">
+          O servidor não devolveu um preço atual. A confirmação fica bloqueada até uma cotação válida.
+        </Alert>
+      ) : null}
+      {quoteFresh && quote.data ? (
         <Alert title={`Total ${formatBRL(quote.data.totalCents)}`}>
           {strategyLabel(quote.data.strategy)} · unitário {formatBRL(quote.data.unitCents)}. Este valor
           é informativo e não reserva preço.
         </Alert>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Button disabled>Adicionar ao pedido</Button>
+        <Button onClick={addToDraft} disabled={!canSend || !quoteFresh}>
+          Adicionar ao pedido
+        </Button>
         <Button variant="outline" onClick={() => navigate('/pdv')}>
           Voltar ao PDV
         </Button>

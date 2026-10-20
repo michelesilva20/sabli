@@ -9,7 +9,9 @@ import {
   OrderAmountBreakdown,
   OrderItemComposition,
 } from '@/features/ordering/order-item-composition';
+import { ApiOrdersPage } from '@/features/orders/api-orders-page';
 import { useOrdersQuery } from '@/shared/api/hooks';
+import { isApiMode } from '@/shared/config/runtime';
 import { formatDateTime, formatTime } from '@/shared/domain/date';
 import { formatBRL } from '@/shared/domain/money';
 import { kitchenStatusToOrderStatus } from '@/shared/domain/kitchen';
@@ -40,6 +42,11 @@ function itemSummary(items: OrderRow['items']) {
 }
 
 export function OrdersPage() {
+  if (isApiMode()) return <ApiOrdersPage />;
+  return <DemoOrdersPage />;
+}
+
+function DemoOrdersPage() {
   const query = useOrdersQuery();
   const session = useDemoSession();
   const [page, setPage] = useState(1);

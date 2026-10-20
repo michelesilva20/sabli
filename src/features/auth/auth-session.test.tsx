@@ -330,7 +330,7 @@ describe('módulo operacional no modo API', () => {
     await login('ana@example.com', 'password10');
     await selectEstablishment(apiOrg.id, apiEst.id);
     renderApp('/pdv');
-    expect(await screen.findByText(/envio de pedido bloqueado/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Novo pedido' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Enviar para cozinha' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Adicionar Calabresa' })).not.toBeInTheDocument();
     expect(screen.queryByText(/mariana/i)).not.toBeInTheDocument();

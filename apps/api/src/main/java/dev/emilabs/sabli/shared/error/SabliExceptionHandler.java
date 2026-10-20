@@ -16,6 +16,7 @@ public class SabliExceptionHandler {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(exception.status(), exception.getMessage());
     problem.setTitle(exception.title());
     problem.setProperty("code", exception.code());
+    exception.properties().forEach(problem::setProperty);
     return problem;
   }
 

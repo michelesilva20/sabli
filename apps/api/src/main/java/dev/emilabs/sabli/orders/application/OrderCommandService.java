@@ -154,6 +154,9 @@ public class OrderCommandService {
       priced.add(new PricedPlacement(sort++, line, pricedLine));
       subtotal += pricedLine.unitCents() * line.quantity();
     }
+    if (normalized.expectedTotalCents() != null && normalized.expectedTotalCents() != subtotal) {
+      throw ApiException.priceChanged(normalized.expectedTotalCents(), subtotal);
+    }
     int number = nextNumber(establishment);
     Order order =
         Order.confirm(
@@ -298,7 +301,8 @@ public class OrderCommandService {
         command.channel() == null
             ? (command.tableServiceId() == null ? OrderChannel.COUNTER : OrderChannel.TABLE)
             : command.channel();
-    return new PlaceCommand(channel, command.tableServiceId(), command.notes(), command.items());
+    return new PlaceCommand(
+        channel, command.tableServiceId(), command.notes(), command.items(), command.expectedTotalCents());
   }
 
   private static String origin(OrderChannel channel, DiningTable table) {
@@ -309,7 +313,11 @@ public class OrderCommandService {
   }
 
   public record PlaceCommand(
-      OrderChannel channel, UUID tableServiceId, String notes, List<LineCommand> items) {}
+      OrderChannel channel,
+      UUID tableServiceId,
+      String notes,
+      List<LineCommand> items,
+      Integer expectedTotalCents) {}
 
   public record LineCommand(UUID productId, UUID variantId, int quantity, String notes, PizzaLine pizza) {}
 

@@ -11,13 +11,23 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly title: string;
+  readonly expectedTotalCents?: number;
+  readonly actualTotalCents?: number;
 
-  constructor(status: number, code: string, title: string, detail: string) {
+  constructor(
+    status: number,
+    code: string,
+    title: string,
+    detail: string,
+    extra?: { expectedTotalCents?: number; actualTotalCents?: number },
+  ) {
     super(detail);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.title = title;
+    this.expectedTotalCents = extra?.expectedTotalCents;
+    this.actualTotalCents = extra?.actualTotalCents;
   }
 }
 
@@ -67,6 +77,7 @@ export async function apiRequest<T>(
     timeoutMs?: number;
     auth?: boolean;
     retryOnUnauthorized?: boolean;
+    headers?: Record<string, string>;
   },
 ): Promise<T> {
   const method = options.method ?? 'GET';
@@ -82,6 +93,11 @@ export async function apiRequest<T>(
     if (auth) {
       const token = readAccessToken();
       if (token) headers.set('Authorization', `Bearer ${token}`);
+    }
+    if (options.headers) {
+      for (const [key, value] of Object.entries(options.headers)) {
+        headers.set(key, value);
+      }
     }
 
     const response = await fetch(apiUrl(withQuery(options.path, options.query)), {
@@ -163,7 +179,10 @@ function toApiError(status: number, payload: unknown): ApiError {
     problem.success && problem.data.detail
       ? problem.data.detail
       : 'A solicitação não pôde ser concluída.';
-  return new ApiError(status, code, title, detail);
+  return new ApiError(status, code, title, detail, {
+    expectedTotalCents: problem.success ? problem.data.expectedTotalCents : undefined,
+    actualTotalCents: problem.success ? problem.data.actualTotalCents : undefined,
+  });
 }
 
 function defaultCode(status: number): string {

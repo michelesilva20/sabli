@@ -58,4 +58,30 @@ describe('cliente HTTP', () => {
       ApiUnavailableError,
     );
   });
+
+  it('envia Idempotency-Key e lê PRICE_CHANGED', async () => {
+    configureRuntimeForTests({ mode: 'api', apiBaseUrl: 'http://127.0.0.1:8080' });
+    writeAccessToken('access-ephemeral');
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(new Headers(init?.headers).get('Idempotency-Key')).toBe('abc');
+      return problem(409, 'PRICE_CHANGED', 'Preço atualizado', 'Diferente', {
+        expectedTotalCents: 700,
+        actualTotalCents: 800,
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      apiRequest(z.object({}), {
+        path: '/establishments/1/orders',
+        method: 'POST',
+        body: {},
+        headers: { 'Idempotency-Key': 'abc' },
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'PRICE_CHANGED',
+      expectedTotalCents: 700,
+      actualTotalCents: 800,
+    } satisfies Partial<ApiError>);
+  });
 });
