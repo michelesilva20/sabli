@@ -27,7 +27,7 @@ export function ApiUnavailableState({ module }: { module: ModuleId }) {
       <EmptyState
         icon={<PlugZap className="size-8" aria-hidden />}
         title="Ainda não disponível no modo API"
-        description="A autenticação e o estabelecimento já vêm do servidor. Operação de catálogo, mesas, pedidos, cozinha e caixa continua só no modo demonstrativo."
+        description="A autenticação, o catálogo e as mesas já vêm do servidor. Pedidos, cozinha, comandas e caixa continuam só no modo demonstrativo."
       />
     </div>
   );

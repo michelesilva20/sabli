@@ -10,10 +10,10 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'desktop', testIgnore: /auth\.spec\.ts|catalog\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'desktop', testIgnore: /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     {
       name: 'auth',
-      testMatch: /auth\.spec\.ts|catalog\.spec\.ts/,
+      testMatch: /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4174' },
     },
   ],
@@ -27,7 +27,7 @@ export default defineConfig({
     {
       command: 'npm run build:api && npm run preview:api',
       url: 'http://127.0.0.1:4174',
-      reuseExistingServer: !process.env.CI,
+      // Sempre reconstrói o dist-api. Reusar a porta 4174 servia um bundle velho e quebrava o F5.
       timeout: 180_000,
     },
   ],

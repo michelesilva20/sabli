@@ -5,7 +5,7 @@ Nada nesta lista persiste em servidor. Onde uma ação muda a tela, a mudança v
 | Rota                | Tela          | Comportamento                                                                                                                                         |
 | ------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/inicio`           | Dashboard     | Saudação, período e estabelecimento alteram os indicadores de exemplo.                                                                                |
-| `/mesas`            | Mapa de mesas | Mapa ou lista, filtro por status, detalhe em sheet, abrir atendimento e pedir conta. Nova reserva explica que o fluxo completo não existe nesta fase. |
+| `/mesas`            | Mapa de mesas | DEMO: mapa local. API: ocupação do PostgreSQL, abrir atendimento, pedir conta e reabrir. Sem encerramento financeiro. |
 | `/pedidos`          | Pedidos       | Lista de exemplo mais os pedidos enviados na sessão.                                                                                                  |
 | `/pdv`              | PDV           | Categorias, busca, indisponíveis, rascunho e envio local para a cozinha.                                                                              |
 | `/pdv/montar-pizza` | Montador      | Tamanho, sabores, frações iguais, borda, adicionais, observação, revisão e inclusão no pedido.                                                        |

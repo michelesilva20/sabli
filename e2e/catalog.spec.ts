@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { signInApi } from './helpers';
 
 const API = 'http://127.0.0.1:8080/api/v1';
 const orgId = '22222222-2222-4222-8222-222222222222';
@@ -58,6 +59,17 @@ async function mockCatalogApi(page: Page) {
   await page.route(`${API}/**`, async (route) => {
     const url = route.request().url();
     const method = route.request().method();
+    if (method === 'POST' && url.endsWith('/auth/login')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: {
+          'Set-Cookie': 'sabli_refresh=e2e-refresh; HttpOnly; Path=/api/v1/auth; SameSite=Lax',
+        },
+        body: JSON.stringify({ accessToken: 'e2e-access', expiresInSeconds: 900, tokenType: 'Bearer' }),
+      });
+      return;
+    }
     if (method === 'POST' && url.endsWith('/auth/refresh')) {
       await route.fulfill({
         status: 200,
@@ -67,7 +79,12 @@ async function mockCatalogApi(page: Page) {
       return;
     }
     if (method === 'GET' && url.endsWith('/me')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(me) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'Cache-Control': 'no-store' },
+        body: JSON.stringify(me),
+      });
       return;
     }
     if (method === 'POST' && url.endsWith('/me/context')) {
@@ -162,6 +179,7 @@ async function mockCatalogApi(page: Page) {
 
 test('catálogo real no modo API com cotação do servidor', async ({ page }) => {
   await mockCatalogApi(page);
+  await signInApi(page);
   await page.goto('/produtos');
   await expect(page.getByRole('heading', { name: 'Produtos' })).toBeVisible();
   await expect(page.getByText('Refrigerante')).toBeVisible();
@@ -171,7 +189,7 @@ test('catálogo real no modo API com cotação do servidor', async ({ page }) =>
   await page.getByRole('button', { name: 'Limpar busca' }).click();
   await expect(page.getByText('Refrigerante')).toBeVisible();
   await page.getByRole('button', { name: 'Cardápio de pizza' }).click();
-  await expect(page.getByText('Calabresa API')).toBeVisible();
+  await expect(page.getByText('Calabresa API').first()).toBeVisible();
   await expect(page.getByText(/total r\$ 58,00/i)).toBeVisible();
   await page.goto('/pdv');
   await expect(page.getByText(/envio de pedido bloqueado/i)).toBeVisible();

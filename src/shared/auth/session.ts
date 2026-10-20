@@ -290,6 +290,16 @@ export function canManageCatalog(context: ContextResponse | null): boolean {
   return roles.some((role) => role === 'ADMIN' || role === 'MANAGER');
 }
 
+export function canManageDining(context: ContextResponse | null): boolean {
+  return canManageCatalog(context);
+}
+
+export function canOperateDining(context: ContextResponse | null): boolean {
+  if (canManageDining(context)) return true;
+  const role = context?.establishmentRole;
+  return role === 'CASHIER' || role === 'WAITER';
+}
+
 export function firstNameFrom(name: string | undefined): string {
   if (!name) return 'por aí';
   return name.trim().split(/\s+/)[0] ?? name;
