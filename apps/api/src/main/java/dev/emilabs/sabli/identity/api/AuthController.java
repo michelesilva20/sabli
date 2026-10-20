@@ -8,6 +8,7 @@ import dev.emilabs.sabli.identity.api.IdentityDtos.TokenResponse;
 import dev.emilabs.sabli.identity.application.AuthService;
 import dev.emilabs.sabli.identity.application.AuthService.RegisterOrganizationCommand;
 import dev.emilabs.sabli.identity.application.AuthService.TokenBundle;
+import dev.emilabs.sabli.identity.security.CookieCsrfGuard;
 import dev.emilabs.sabli.identity.security.RefreshCookie;
 import dev.emilabs.sabli.shared.error.ApiException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,10 +30,12 @@ public class AuthController {
 
   private final AuthService authService;
   private final RefreshCookie refreshCookie;
+  private final CookieCsrfGuard cookieCsrf;
 
-  public AuthController(AuthService authService, RefreshCookie refreshCookie) {
+  public AuthController(AuthService authService, RefreshCookie refreshCookie, CookieCsrfGuard cookieCsrf) {
     this.authService = authService;
     this.refreshCookie = refreshCookie;
+    this.cookieCsrf = cookieCsrf;
   }
 
   @PostMapping("/register-organization")
@@ -66,7 +69,9 @@ public class AuthController {
       @RequestBody(required = false) RefreshRequest request,
       HttpServletRequest httpRequest,
       HttpServletResponse response) {
-    String presented = refreshCookie.read(httpRequest, request == null ? null : request.refreshToken());
+    String bodyToken = request == null ? null : request.refreshToken();
+    cookieCsrf.assertAllowed(httpRequest, !org.springframework.util.StringUtils.hasText(bodyToken));
+    String presented = refreshCookie.read(httpRequest, bodyToken);
     if (presented == null) {
       throw ApiException.invalidCredentials();
     }
@@ -80,7 +85,9 @@ public class AuthController {
       @RequestBody(required = false) LogoutRequest request,
       HttpServletRequest httpRequest,
       HttpServletResponse response) {
-    String presented = refreshCookie.read(httpRequest, request == null ? null : request.refreshToken());
+    String bodyToken = request == null ? null : request.refreshToken();
+    cookieCsrf.assertAllowed(httpRequest, !org.springframework.util.StringUtils.hasText(bodyToken));
+    String presented = refreshCookie.read(httpRequest, bodyToken);
     if (presented != null) {
       authService.logout(presented);
     }

@@ -193,7 +193,7 @@ Confirmação congela nomes, composição e preços. Idempotência por `Idempote
 | Fila da cozinha | `GET /kitchen/tickets` |
 | Avanço | `POST /kitchen/tickets/{id}/advance` e `.../items/{itemId}/advance` |
 
-Desconto promocional do SPA não entra no total. Encerramento da mesa exige quitação.
+Desconto promocional do SPA não entra no total. Encerramento da mesa exige quitação com consumo, ou encerramento explícito sem consumo (`empty` + `reason`). Conta de R$ 0,00 não é `SETTLED`.
 
 ## Comandas e caixa
 
@@ -208,7 +208,7 @@ Totais vêm dos pedidos congelados. Pagamentos PIX/cartão são manuais. Uma ses
 | Movimentos | `POST /cash/sessions/{id}/movements` (`SUPPLY` / `BLEED`) |
 | Fechamento | `POST /cash/sessions/{id}/close` |
 
-`CASHIER`/`ADMIN`/`MANAGER` pagam e operam o caixa. `WAITER` consulta a comanda e encerra mesa quitada. `KITCHEN` não vê financeiro.
+`CASHIER`/`ADMIN`/`MANAGER` pagam e operam o caixa. `WAITER` consulta a comanda, encerra mesa quitada e encerra atendimento sem consumo com motivo. `KITCHEN` não vê financeiro.
 
 ## Limites deste checkpoint
 

@@ -13,6 +13,8 @@ const tableOccupancySchema = z.enum([
 ]);
 const serviceStatusSchema = z.enum(['OPEN', 'AWAITING_BILL', 'CLOSED']);
 
+export const serviceCloseKindSchema = z.enum(['SETTLED', 'EMPTY']);
+
 export const serviceResponseSchema = z.object({
   id: z.string().uuid(),
   tableId: z.string().uuid(),
@@ -24,6 +26,10 @@ export const serviceResponseSchema = z.object({
   openedAt: z.string(),
   requestedBillAt: z.string().nullable().optional(),
   closedAt: z.string().nullable().optional(),
+  closedByUserId: z.string().uuid().nullable().optional(),
+  closedByName: z.string().nullable().optional(),
+  closeReason: z.string().nullable().optional(),
+  closeKind: serviceCloseKindSchema.nullable().optional(),
   version: z.number().int(),
 });
 
@@ -219,10 +225,16 @@ export function reopenService(establishmentId: string, tableId: string) {
   });
 }
 
-export function closeService(establishmentId: string, tableId: string) {
+export type CloseServiceBody = {
+  empty?: boolean;
+  reason?: string;
+};
+
+export function closeService(establishmentId: string, tableId: string, body: CloseServiceBody = {}) {
   return apiRequest(serviceResponseSchema, {
     path: diningPath(establishmentId, `/tables/${tableId}/service/close`),
     method: 'POST',
+    body,
   });
 }
 

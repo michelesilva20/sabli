@@ -159,9 +159,9 @@ async function mockDiningApi(page: Page) {
           totalCents: 0,
           paidCents: 0,
           remainingCents: 0,
-          status: 'SETTLED',
-          settled: true,
-          settledAt: '2026-10-19T12:10:00Z',
+          status: 'OPEN',
+          settled: false,
+          settledAt: null,
           version: 0,
           orders: [],
           payments: [],
@@ -278,7 +278,8 @@ test('abre mesa, pede conta e reabre o atendimento no modo API', async ({ page }
   await sheet.getByRole('button', { name: 'Reabrir atendimento' }).click();
   await page.getByRole('button', { name: 'Confirmar reabertura' }).click();
   await expect(sheet.getByText('Há um atendimento aberto nesta mesa.')).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Encerrar atendimento' })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Encerrar sem consumo' })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Encerrar atendimento' })).toHaveCount(0);
   await sheet.getByRole('button', { name: 'Fechar' }).click();
   await expect(page.getByRole('button', { name: /mesa 01, ocupada/i })).toBeVisible();
   await page.screenshot({ path: 'docs/screenshots/mesas-api.png', fullPage: true });

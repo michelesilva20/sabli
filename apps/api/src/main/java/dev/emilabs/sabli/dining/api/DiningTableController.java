@@ -1,6 +1,7 @@
 package dev.emilabs.sabli.dining.api;
 
 import dev.emilabs.sabli.dining.api.DiningDtos.AvailabilityRequest;
+import dev.emilabs.sabli.dining.api.DiningDtos.CloseServiceRequest;
 import dev.emilabs.sabli.dining.api.DiningDtos.OpenServiceRequest;
 import dev.emilabs.sabli.dining.api.DiningDtos.PageResponse;
 import dev.emilabs.sabli.dining.api.DiningDtos.ServiceResponse;
@@ -8,6 +9,7 @@ import dev.emilabs.sabli.dining.api.DiningDtos.StatusRequest;
 import dev.emilabs.sabli.dining.api.DiningDtos.TableRequest;
 import dev.emilabs.sabli.dining.api.DiningDtos.TableResponse;
 import dev.emilabs.sabli.dining.application.DiningCommandService;
+import dev.emilabs.sabli.dining.application.DiningCommandService.CloseCommand;
 import dev.emilabs.sabli.dining.application.DiningQueryService;
 import dev.emilabs.sabli.dining.domain.DiningTable;
 import dev.emilabs.sabli.dining.domain.TableService;
@@ -145,9 +147,16 @@ public class DiningTableController {
   }
 
   @PostMapping("/{tableId}/service/close")
-  @Operation(summary = "Encerra o atendimento somente com a conta quitada")
-  public ServiceResponse close(@PathVariable UUID establishmentId, @PathVariable UUID tableId) {
-    return ServiceResponse.from(commands.closeService(currentUser.requireUserId(), establishmentId, tableId));
+  @Operation(summary = "Encerra o atendimento quitado ou, explicitamente, um atendimento sem consumo")
+  public ServiceResponse close(
+      @PathVariable UUID establishmentId,
+      @PathVariable UUID tableId,
+      @RequestBody(required = false) CloseServiceRequest request) {
+    boolean empty = request != null && Boolean.TRUE.equals(request.empty());
+    String reason = request == null ? null : request.reason();
+    return ServiceResponse.from(
+        commands.closeService(
+            currentUser.requireUserId(), establishmentId, tableId, new CloseCommand(empty, reason)));
   }
 
   @GetMapping("/{tableId}/services")

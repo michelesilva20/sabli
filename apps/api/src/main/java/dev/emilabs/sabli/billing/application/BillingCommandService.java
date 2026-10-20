@@ -65,7 +65,27 @@ public class BillingCommandService {
 
   public Bill requireSettledForClose(UUID establishmentId, TableService service) {
     Bill bill = ensureLockedTableBill(service.establishmentId(), service);
-    if (bill.remainingCents() != 0 || !bill.isSettled()) {
+    if (bill.totalCents() <= 0 || bill.remainingCents() != 0 || !bill.isSettled()) {
+      throw ApiException.conflict(
+          "CLOSE_REQUIRES_SETTLEMENT", "O atendimento só pode ser encerrado com a conta quitada.");
+    }
+    return bill;
+  }
+
+  public Bill requireEmptyForClose(UUID establishmentId, TableService service) {
+    Bill bill = ensureLockedTableBill(service.establishmentId(), service);
+    boolean hasOrders =
+        orders.existsByEstablishmentIdAndTableServiceId(establishmentId, service.id());
+    if (hasOrders || bill.totalCents() > 0) {
+      throw ApiException.conflict(
+          "CLOSE_HAS_CONSUMPTION",
+          "Há pedidos confirmados neste atendimento. Quite a conta antes de encerrar.");
+    }
+    if (bill.paidCents() > 0 || payments.existsByBillId(bill.id())) {
+      throw ApiException.conflict(
+          "CLOSE_HAS_PAYMENTS", "Há pagamentos registrados. Encerrar sem consumo não é permitido.");
+    }
+    if (bill.isSettled()) {
       throw ApiException.conflict(
           "CLOSE_REQUIRES_SETTLEMENT", "O atendimento só pode ser encerrado com a conta quitada.");
     }

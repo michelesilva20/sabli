@@ -137,7 +137,7 @@ public class Bill {
     this.totalCents = totalCents;
     this.paidCents = paidCents;
     this.remainingCents = totalCents - paidCents;
-    if (remainingCents == 0) {
+    if (remainingCents == 0 && totalCents > 0) {
       status = BillStatus.SETTLED;
       if (settledAt == null) {
         settledAt = now();

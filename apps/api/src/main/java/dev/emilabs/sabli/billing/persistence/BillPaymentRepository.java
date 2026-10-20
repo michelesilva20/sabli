@@ -12,4 +12,6 @@ public interface BillPaymentRepository extends JpaRepository<BillPayment, UUID> 
 
   Optional<BillPayment> findByEstablishmentIdAndRecordedByUserIdAndIdempotencyKey(
       UUID establishmentId, UUID recordedByUserId, String idempotencyKey);
+
+  boolean existsByBillId(UUID billId);
 }

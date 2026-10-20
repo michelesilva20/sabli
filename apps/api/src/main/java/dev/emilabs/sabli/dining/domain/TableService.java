@@ -47,6 +47,19 @@ public class TableService {
   @Column(name = "closed_at")
   private Instant closedAt;
 
+  @Column(name = "closed_by_user_id")
+  private UUID closedByUserId;
+
+  @Column(name = "closed_by_name")
+  private String closedByName;
+
+  @Column(name = "close_reason")
+  private String closeReason;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "close_kind")
+  private ServiceCloseKind closeKind;
+
   @Column(name = "billing_started", nullable = false)
   private boolean billingStarted;
 
@@ -138,6 +151,22 @@ public class TableService {
     return closedAt;
   }
 
+  public UUID closedByUserId() {
+    return closedByUserId;
+  }
+
+  public String closedByName() {
+    return closedByName;
+  }
+
+  public String closeReason() {
+    return closeReason;
+  }
+
+  public ServiceCloseKind closeKind() {
+    return closeKind;
+  }
+
   public TableServiceStatus status() {
     return status;
   }
@@ -179,8 +208,12 @@ public class TableService {
     billingStarted = true;
   }
 
-  public void close() {
+  public void close(ServiceCloseKind kind, UUID closedByUserId, String closedByName, String closeReason) {
     status = TableServiceStatus.CLOSED;
     closedAt = now();
+    this.closeKind = kind;
+    this.closedByUserId = closedByUserId;
+    this.closedByName = closedByName;
+    this.closeReason = closeReason;
   }
 }

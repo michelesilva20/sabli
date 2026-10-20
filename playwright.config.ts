@@ -12,7 +12,8 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      testIgnore: /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts|orders\.spec\.ts|billing\.spec\.ts/,
+      testIgnore:
+        /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts|orders\.spec\.ts|billing\.spec\.ts|real-cycle\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     {

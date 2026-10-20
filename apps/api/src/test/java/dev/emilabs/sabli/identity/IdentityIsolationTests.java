@@ -390,6 +390,23 @@ class IdentityIsolationTests extends IdentitySupport {
   }
 
   @Test
+  void cookieRefreshFromUnknownOriginIsRejected() throws Exception {
+    Tenant tenant = registerTenant("csrf");
+    mockMvc
+        .perform(
+            post("/api/v1/auth/refresh")
+                .header("Origin", "https://evil.example")
+                .cookie(new jakarta.servlet.http.Cookie("sabli_refresh", tenant.refreshToken())))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post("/api/v1/auth/refresh")
+                .header("Origin", "http://127.0.0.1:5173")
+                .cookie(new jakarta.servlet.http.Cookie("sabli_refresh", tenant.refreshToken())))
+        .andExpect(status().isOk());
+  }
+
+  @Test
   void missingMembershipAndUnknownIdsReturnNotFound() throws Exception {
     Tenant tenant = registerTenant("miss");
     mockMvc
@@ -497,6 +514,24 @@ class IdentityIsolationTests extends IdentitySupport {
     String header = login.getResponse().getHeader(HttpHeaders.SET_COOKIE);
     org.assertj.core.api.Assertions.assertThat(header).contains("HttpOnly");
     org.assertj.core.api.Assertions.assertThat(header).contains("SameSite=Lax");
+    org.assertj.core.api.Assertions.assertThat(header).doesNotContain("Secure");
     org.assertj.core.api.Assertions.assertThat(refreshCookie(login)).isNotBlank();
+  }
+
+  @Test
+  void cookieLogoutFromUnknownOriginIsRejected() throws Exception {
+    Tenant tenant = registerTenant("outcsrf");
+    mockMvc
+        .perform(
+            post("/api/v1/auth/logout")
+                .header("Origin", "https://evil.example")
+                .cookie(new jakarta.servlet.http.Cookie("sabli_refresh", tenant.refreshToken())))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post("/api/v1/auth/logout")
+                .header("Origin", "http://127.0.0.1:5173")
+                .cookie(new jakarta.servlet.http.Cookie("sabli_refresh", tenant.refreshToken())))
+        .andExpect(status().isNoContent());
   }
 }

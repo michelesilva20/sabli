@@ -109,7 +109,11 @@ export function useReopenServiceMutation() {
 export function useCloseServiceMutation() {
   const establishmentId = useEstablishmentId();
   return useMutation({
-    mutationFn: (tableId: string) => closeService(establishmentId!, tableId),
+    mutationFn: (input: { tableId: string; empty?: boolean; reason?: string }) =>
+      closeService(establishmentId!, input.tableId, {
+        empty: input.empty,
+        reason: input.reason,
+      }),
     onSuccess: () => establishmentId && invalidateDiningAndBilling(establishmentId),
   });
 }

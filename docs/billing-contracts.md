@@ -36,7 +36,7 @@ Encerrar o caixa **não** invalida pagamentos já gravados nem impede fechar uma
 | Caixa atual | `GET /cash/sessions/current` |
 | `addCashMovement` in/out | `POST /cash/sessions/{id}/movements` `{ type: SUPPLY\|BLEED }` |
 | `drawerCashCents` / `salesByMethod` | `drawerCashCents`, `totalsByMethod` |
-| `closeService` | `POST /tables/{id}/service/close` — só com conta `SETTLED` |
+| `closeService` | `POST /tables/{id}/service/close` — quitado (`SETTLED` com total > 0) ou `{ "empty": true, "reason" }` |
 
 Meios: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD` (SPA usa `cash` / `pix` / `debit` / `credit`). Vale (`voucher`) não existe no backend.
 
@@ -46,5 +46,5 @@ Dinheiro acima do saldo gera troco; o valor aplicado à conta é o restante, nã
 
 - Consultar comanda: `ADMIN`, `MANAGER`, `CASHIER`, `WAITER`.
 - Pagamentos e caixa: `ADMIN`, `MANAGER`, `CASHIER`.
-- Encerrar mesa quitada: papéis que operam o salão (`WAITER` incluído).
+- Encerrar mesa quitada ou atendimento sem consumo (com motivo): papéis que operam o salão (`WAITER` incluído). Conta de R$ 0,00 não é `SETTLED`.
 - `KITCHEN` não lê dados financeiros detalhados.
