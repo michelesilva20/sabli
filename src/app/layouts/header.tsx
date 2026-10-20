@@ -5,6 +5,15 @@ import { businessNavigation } from '@/app/config/navigation';
 import { SidebarNav } from '@/app/layouts/sidebar';
 import { useUiStore } from '@/app/stores/ui-store';
 import { useCatalogQuery, useEstablishmentsQuery, useNotificationsQuery } from '@/shared/api/hooks';
+import {
+  firstNameFrom,
+  initialsFrom,
+  logout,
+  roleLabel,
+  selectEstablishment,
+  useAuthSession,
+} from '@/shared/auth/session';
+import { isApiMode, isDemoMode } from '@/shared/config/runtime';
 import { demoSession, resetDemoSession, useDemoSession } from '@/shared/demo/session';
 import { Avatar } from '@/design-system/components/media';
 import { DropdownMenu } from '@/design-system/components/overlays';
@@ -24,6 +33,20 @@ export function AppHeader() {
   const catalog = useCatalogQuery();
   const notifications = useNotificationsQuery();
   const session = useDemoSession();
+  const auth = useAuthSession();
+  const apiPlaces = auth.me?.establishments ?? [];
+  const displayName = isApiMode() ? (auth.me?.user.name ?? 'Conta') : session.profile.name;
+  const displayFirstName = isApiMode()
+    ? firstNameFrom(auth.me?.user.name)
+    : session.profile.firstName;
+  const displayRole = isApiMode() ? roleLabel(auth.context, auth.me) : session.profile.role;
+  const displayInitials = isApiMode()
+    ? initialsFrom(auth.me?.user.name)
+    : session.profile.initials;
+  const placeName = isApiMode()
+    ? (auth.context?.establishment?.name ?? 'Estabelecimento')
+    : (establishments.data?.find((item) => item.id === establishmentId)?.name ??
+      'Estabelecimento');
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -42,11 +65,14 @@ export function AppHeader() {
     ]
       .filter((item) => item.label.toLowerCase().includes(term))
       .map((item) => ({ id: item.id, label: item.label, hint: item.hint, to: item.to }));
-    const products = (catalog.data?.products ?? [])
+    const products = isDemoMode()
+      ? (catalog.data?.products ?? [])
       .filter((product) => product.name.toLowerCase().includes(term))
       .slice(0, 5)
-      .map((product) => ({ id: product.id, label: product.name, hint: 'Produto', to: '/pdv' }));
-    const tables = session.tables
+      .map((product) => ({ id: product.id, label: product.name, hint: 'Produto', to: '/pdv' }))
+      : [];
+    const tables = isDemoMode()
+      ? session.tables
       .filter((table) => `mesa ${table.number}`.includes(term) || String(table.number) === term)
       .slice(0, 4)
       .map((table) => ({
@@ -54,15 +80,16 @@ export function AppHeader() {
         label: `Mesa ${String(table.number).padStart(2, '0')}`,
         hint: 'Salão',
         to: '/mesas',
-      }));
+      }))
+      : [];
     return [...pages, ...products, ...tables].slice(0, 8);
   }, [catalog.data?.products, query, session.tables]);
 
-  const unread = (notifications.data ?? []).filter(
-    (item) => !item.read && !session.readNotificationIds.includes(item.id),
-  ).length;
-
-  const place = establishments.data?.find((item) => item.id === establishmentId);
+  const unread = isDemoMode()
+    ? (notifications.data ?? []).filter(
+        (item) => !item.read && !session.readNotificationIds.includes(item.id),
+      ).length
+    : 0;
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-card px-4 py-2.5 sm:gap-3 sm:px-6 lg:px-8">
@@ -83,7 +110,7 @@ export function AppHeader() {
           }}
           onFocus={() => setSearchOpen(true)}
           placeholder="Buscar mesas, pedidos, produtos..."
-          aria-label="Busca demonstrativa"
+          aria-label={isApiMode() ? 'Buscar módulos' : 'Busca demonstrativa'}
           aria-expanded={searchOpen && results.length > 0}
           aria-controls="busca-global"
         />
@@ -130,27 +157,62 @@ export function AppHeader() {
               className="hidden h-10 items-center gap-2 rounded-full px-3 text-sm font-bold hover:bg-muted md:inline-flex"
             >
               <Store className="size-4 text-primary-strong" aria-hidden />
-              <span className="max-w-40 truncate">{place?.name ?? 'Estabelecimento'}</span>
+              <span className="max-w-40 truncate">{placeName}</span>
             </button>
           }
-          items={(establishments.data ?? []).map((item) => ({
-            id: item.id,
-            label: item.name,
-            onSelect: () => {
-              setEstablishmentId(item.id);
-              pushToast({
-                title: item.name,
-                description:
-                  'Os indicadores demonstrativos acompanham o estabelecimento selecionado.',
-              });
-            },
-          }))}
+          items={
+            isApiMode()
+              ? [
+                  ...apiPlaces.map((item) => ({
+                    id: item.id,
+                    label: item.name,
+                    onSelect: () => {
+                      void selectEstablishment(item.organizationId, item.id).then(
+                        () =>
+                          pushToast({
+                            title: item.name,
+                            description: 'Contexto autorizado pelo servidor.',
+                          }),
+                        () =>
+                          pushToast({
+                            title: 'Contexto recusado',
+                            description: 'O servidor não autorizou este estabelecimento.',
+                          }),
+                      );
+                    },
+                  })),
+                  {
+                    id: 'switch',
+                    label: 'Escolher outro',
+                    onSelect: () => navigate('/selecionar-estabelecimento'),
+                  },
+                ]
+              : (establishments.data ?? []).map((item) => ({
+                  id: item.id,
+                  label: item.name,
+                  onSelect: () => {
+                    setEstablishmentId(item.id);
+                    pushToast({
+                      title: item.name,
+                      description:
+                        'Os indicadores demonstrativos acompanham o estabelecimento selecionado.',
+                    });
+                  },
+                }))
+          }
         />
         <div className="relative">
           <button
             type="button"
             className="relative grid size-10 place-items-center rounded-full hover:bg-muted"
-            aria-label={unread ? `Notificações, ${unread} não lidas` : 'Notificações'}
+            aria-label={
+              isApiMode()
+                ? 'Notificações indisponíveis no modo API'
+                : unread
+                  ? `Notificações, ${unread} não lidas`
+                  : 'Notificações'
+            }
+            disabled={isApiMode()}
             aria-expanded={notesOpen}
             onClick={() => setNotesOpen((open) => !open)}
           >
@@ -193,49 +255,59 @@ export function AppHeader() {
           <ThemeSwitcher compact />
         </div>
         <DropdownMenu
-          label="Conta demonstrativa"
+          label={isApiMode() ? 'Conta' : 'Conta demonstrativa'}
           trigger={
             <button
               type="button"
               className="flex h-10 items-center gap-2 rounded-full pr-2 pl-1 hover:bg-muted"
             >
-              <Avatar
-                initials={session.profile.initials}
-                label={session.profile.name}
-                className="size-9"
-              />
+              <Avatar initials={displayInitials} label={displayName} className="size-9" />
               <span className="hidden text-left leading-tight sm:grid">
-                <span className="text-sm font-extrabold">Olá, {session.profile.firstName}</span>
+                <span className="text-sm font-extrabold">Olá, {displayFirstName}</span>
                 <span className="text-[11px] font-semibold text-muted-foreground">
-                  {session.profile.role}
+                  {displayRole}
                 </span>
               </span>
             </button>
           }
           items={[
             { id: 'profile', label: 'Meu perfil', onSelect: () => navigate('/perfil') },
-            {
-              id: 'waiter',
-              label: 'Atendimento do garçom',
-              onSelect: () => navigate('/atendimento/mesas'),
-            },
+            ...(isDemoMode()
+              ? [
+                  {
+                    id: 'waiter',
+                    label: 'Atendimento do garçom',
+                    onSelect: () => navigate('/atendimento/mesas'),
+                  },
+                ]
+              : []),
             { id: 'settings', label: 'Configurações', onSelect: () => navigate('/configuracoes') },
             ...(import.meta.env.DEV
               ? [{ id: 'ds', label: 'Sabli UI', onSelect: () => navigate('/design-system') }]
               : []),
-            {
-              id: 'reset',
-              label: 'Reiniciar demonstração',
-              destructive: true,
-              onSelect: () => {
-                resetDemoSession();
-                pushToast({
-                  title: 'Demonstração reiniciada',
-                  description:
-                    'Os dados locais voltaram ao exemplo inicial. Nada foi enviado a um servidor.',
-                });
-              },
-            },
+            isApiMode()
+              ? {
+                  id: 'logout',
+                  label: 'Sair',
+                  destructive: true,
+                  onSelect: () => {
+                    void logout();
+                    navigate('/entrar');
+                  },
+                }
+              : {
+                  id: 'reset',
+                  label: 'Reiniciar demonstração',
+                  destructive: true,
+                  onSelect: () => {
+                    resetDemoSession();
+                    pushToast({
+                      title: 'Demonstração reiniciada',
+                      description:
+                        'Os dados locais voltaram ao exemplo inicial. Nada foi enviado a um servidor.',
+                    });
+                  },
+                },
           ]}
         />
       </div>

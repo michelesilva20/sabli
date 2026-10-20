@@ -3,6 +3,9 @@ import { BusinessLayout } from '@/app/layouts/business-layout';
 import { KitchenLayout } from '@/app/layouts/kitchen-layout';
 import { ModuleGate } from '@/app/layouts/module-gate';
 import { WaiterLayout } from '@/app/layouts/waiter-layout';
+import { GuestOnly, RequireAuth, RequireEstablishment } from '@/features/auth/auth-guards';
+import { LoginPage } from '@/features/auth/login-page';
+import { SelectEstablishmentPage } from '@/features/auth/select-establishment-page';
 import { CatalogPage } from '@/features/catalog/catalog-page';
 import { CashPage } from '@/features/cash/cash-page';
 import { DashboardPage } from '@/features/dashboard/dashboard-page';
@@ -35,120 +38,139 @@ export function createAppRoutes() {
 
   return [
     {
-      path: '/',
-      element: <BusinessLayout />,
-      children: [
-        { index: true, element: <Navigate to="/inicio" replace /> },
-        {
-          path: 'inicio',
-          element: (
-            <ModuleGate module="home">
-              <DashboardPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'mesas',
-          element: (
-            <ModuleGate module="tables">
-              <DiningPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'pedidos',
-          element: (
-            <ModuleGate module="orders">
-              <OrdersPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'pdv',
-          element: (
-            <ModuleGate module="pos">
-              <PosPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'pdv/montar-pizza',
-          element: (
-            <ModuleGate module="pos">
-              <PizzaBuilderPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'comandas',
-          element: (
-            <ModuleGate module="checks">
-              <ChecksPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'produtos',
-          element: (
-            <ModuleGate module="products">
-              <CatalogPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'caixa',
-          element: (
-            <ModuleGate module="cash">
-              <CashPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'relatorios',
-          element: (
-            <ModuleGate module="reports">
-              <ReportsPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'equipe',
-          element: (
-            <ModuleGate module="team">
-              <TeamPage />
-            </ModuleGate>
-          ),
-        },
-        {
-          path: 'configuracoes',
-          element: (
-            <ModuleGate module="settings">
-              <SettingsPage />
-            </ModuleGate>
-          ),
-        },
-        { path: 'perfil', element: <ProfilePage /> },
-        ...designSystemRoute,
-        { path: '*', element: <NotFoundPage /> },
-      ],
+      path: '/entrar',
+      element: (
+        <GuestOnly>
+          <LoginPage />
+        </GuestOnly>
+      ),
     },
     {
-      path: '/cozinha',
-      element: <KitchenLayout />,
-      children: [{ index: true, element: <KitchenPage /> }],
-    },
-    {
-      path: '/atendimento',
-      element: <WaiterLayout />,
+      element: <RequireAuth />,
       children: [
-        { index: true, element: <Navigate to="/atendimento/mesas" replace /> },
-        { path: 'mesas', element: <WaiterTablesPage /> },
-        { path: 'mesas/:tableId', element: <WaiterTablePage /> },
-        { path: 'comanda', element: <WaiterCheckPage /> },
-        { path: 'cardapio', element: <WaiterCatalogPage /> },
-        { path: 'montar-pizza', element: <WaiterPizzaPage /> },
-        { path: 'revisao', element: <WaiterReviewPage /> },
-        { path: 'conta', element: <WaiterBillPage /> },
+        { path: '/selecionar-estabelecimento', element: <SelectEstablishmentPage /> },
+        {
+          element: <RequireEstablishment />,
+          children: [
+            {
+              path: '/',
+              element: <BusinessLayout />,
+              children: [
+                { index: true, element: <Navigate to="/inicio" replace /> },
+                {
+                  path: 'inicio',
+                  element: (
+                    <ModuleGate module="home">
+                      <DashboardPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'mesas',
+                  element: (
+                    <ModuleGate module="tables">
+                      <DiningPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'pedidos',
+                  element: (
+                    <ModuleGate module="orders">
+                      <OrdersPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'pdv',
+                  element: (
+                    <ModuleGate module="pos">
+                      <PosPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'pdv/montar-pizza',
+                  element: (
+                    <ModuleGate module="pos">
+                      <PizzaBuilderPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'comandas',
+                  element: (
+                    <ModuleGate module="checks">
+                      <ChecksPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'produtos',
+                  element: (
+                    <ModuleGate module="products">
+                      <CatalogPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'caixa',
+                  element: (
+                    <ModuleGate module="cash">
+                      <CashPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'relatorios',
+                  element: (
+                    <ModuleGate module="reports">
+                      <ReportsPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'equipe',
+                  element: (
+                    <ModuleGate module="team">
+                      <TeamPage />
+                    </ModuleGate>
+                  ),
+                },
+                {
+                  path: 'configuracoes',
+                  element: (
+                    <ModuleGate module="settings">
+                      <SettingsPage />
+                    </ModuleGate>
+                  ),
+                },
+                { path: 'perfil', element: <ProfilePage /> },
+                ...designSystemRoute,
+                { path: '*', element: <NotFoundPage /> },
+              ],
+            },
+            {
+              path: '/cozinha',
+              element: <KitchenLayout />,
+              children: [{ index: true, element: <KitchenPage /> }],
+            },
+            {
+              path: '/atendimento',
+              element: <WaiterLayout />,
+              children: [
+                { index: true, element: <Navigate to="/atendimento/mesas" replace /> },
+                { path: 'mesas', element: <WaiterTablesPage /> },
+                { path: 'mesas/:tableId', element: <WaiterTablePage /> },
+                { path: 'comanda', element: <WaiterCheckPage /> },
+                { path: 'cardapio', element: <WaiterCatalogPage /> },
+                { path: 'montar-pizza', element: <WaiterPizzaPage /> },
+                { path: 'revisao', element: <WaiterReviewPage /> },
+                { path: 'conta', element: <WaiterBillPage /> },
+              ],
+            },
+          ],
+        },
       ],
     },
   ];

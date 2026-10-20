@@ -27,6 +27,6 @@ public class SabliOpenApiConfiguration {
                 .title("Sabli API")
                 .version("0.1.0")
                 .description(
-                    "Identidade, catálogo, mesas, pedidos/KDS, comandas e caixa por estabelecimento. PIX e cartão são registros manuais, sem adquirente."));
+                    "Identidade, catálogo, mesas, pedidos/KDS, comandas e caixa. Refresh em cookie HttpOnly. PIX e cartão são registros manuais, sem adquirente."));
   }
 }

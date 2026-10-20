@@ -58,7 +58,8 @@ Saúde pública: `GET http://127.0.0.1:8080/actuator/health` → `{"status":"UP"
 | `SABLI_JWT_SECRET` | sim | Segredo HS256, no mínimo 32 caracteres. Sem default útil no Git |
 | `SABLI_REGISTRATION_MODE` | não | `DISABLED`, `OPEN` ou `BOOTSTRAP_TOKEN`. Default `BOOTSTRAP_TOKEN` |
 | `SABLI_BOOTSTRAP_SIGNUP_TOKEN` | no modo bootstrap | Convite para criar a primeira organização. Vazio recusa o cadastro |
-| `SABLI_CORS_ALLOWED_ORIGINS` | não | Origens permitidas, separadas por vírgula. Default `http://127.0.0.1:5173` |
+| `SABLI_CORS_ALLOWED_ORIGINS` | não | Origens permitidas, separadas por vírgula. Default inclui `5173`, `4173` e `4174` |
+| `SABLI_COOKIE_SECURE` | não | Cookie de refresh com `Secure`. Default `false` para HTTP local |
 | `SABLI_OPENAPI_ENABLED` | não | Liga `/v3/api-docs` no perfil `local`. Continua autenticado |
 | `SABLI_BCRYPT_STRENGTH` | não | Custo BCrypt. Default 12 |
 
@@ -72,7 +73,7 @@ Autenticação:
 
 - Login por e-mail (normalizado) e senha (BCrypt).
 - Access JWT HS256, curta duração (~15 min), claims `sub` e `typ=access`. Sem organização nem estabelecimento no token.
-- Refresh opaco, 32 bytes, armazenado só como SHA-256. Rotação por família; reuso revoga a família. Logout revoga a sessão apresentada.
+- Refresh opaco, 32 bytes, armazenado só como SHA-256. Vai no cookie HttpOnly `sabli_refresh` (`Path=/api/v1/auth`, `SameSite=Lax`). O JSON de login/refresh **não** devolve `refreshToken`. O body JSON continua aceito só como fallback de teste. Rotação por família; reuso revoga a família. Logout revoga a sessão e limpa o cookie.
 - Bloqueio após 5 senhas inválidas por 15 minutos. Mensagem genérica, sem enumerar e-mail.
 
 Contexto de tenant: IDs vão no path ou em `POST /api/v1/me/context`. O servidor valida membership ativa. JWT válido não autoriza sozinho. Recurso de outro tenant responde 404. Tenant `SUSPENDED` bloqueia mutações operacionais (`TENANT_SUSPENDED`). Membership `REVOKED` some do acesso.
@@ -212,8 +213,8 @@ Totais vêm dos pedidos congelados. Pagamentos PIX/cartão são manuais. Uma ses
 
 - Sem adquirente, TEF, fiscal ou estorno. PIX e cartão são declaração do operador.
 - Sem MFA.
-- Sem integração React → API. `SabliDataSource` e a sessão demonstrativa permanecem.
+- O SPA no modo `api` autentica e escolhe estabelecimento. Catálogo, mesas, pedidos, KDS, comandas e caixa ainda não estão ligados no React.
 - Actuator expõe só `health`, sem detalhes.
 - OpenAPI está no classpath, desligado por padrão e protegido por autenticação.
 - Micrometer/Prometheus não está exposto.
-- CORS aceita somente origens configuradas, sem credenciais.
+- CORS aceita somente origens configuradas, com credenciais, para o cookie de refresh.

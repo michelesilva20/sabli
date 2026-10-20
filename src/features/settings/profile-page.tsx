@@ -14,6 +14,14 @@ import { ThemeSwitcher } from '@/design-system/components/theme-switcher';
 import { pushToast } from '@/design-system/components/toast';
 import { useUiStore } from '@/app/stores/ui-store';
 import { useEstablishmentsQuery } from '@/shared/api/hooks';
+import {
+  firstNameFrom,
+  initialsFrom,
+  logout,
+  roleLabel,
+  useAuthSession,
+} from '@/shared/auth/session';
+import { isApiMode } from '@/shared/config/runtime';
 import { demoSession, resetDemoSession, useDemoSession } from '@/shared/demo/session';
 
 const schema = z.object({
@@ -32,6 +40,47 @@ const shifts = [
 ];
 
 export function ProfilePage() {
+  if (isApiMode()) return <ApiProfilePage />;
+  return <DemoProfilePage />;
+}
+
+function ApiProfilePage() {
+  const auth = useAuthSession();
+  const user = auth.me?.user;
+  return (
+    <div className="grid gap-4">
+      <PageHeader
+        title="Perfil"
+        description="Dados da conta autenticada. A senha não é alterada nesta etapa."
+      />
+      <Card className="max-w-xl">
+        <CardContent className="grid justify-items-center gap-3 py-8 text-center">
+          <Avatar
+            initials={initialsFrom(user?.name)}
+            label={user?.name ?? 'Conta'}
+            className="size-20 text-2xl"
+          />
+          <h2 className="text-xl font-extrabold">{user?.name}</h2>
+          <p className="text-sm font-semibold text-muted-foreground">{user?.email}</p>
+          <p className="text-sm text-muted-foreground">
+            {auth.context?.establishment?.name} · {roleLabel(auth.context, auth.me)}
+          </p>
+          <p className="sr-only">{firstNameFrom(user?.name)}</p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void logout();
+            }}
+          >
+            Sair
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DemoProfilePage() {
   const session = useDemoSession();
   const navigate = useNavigate();
   const establishmentId = useUiStore((state) => state.establishmentId);
