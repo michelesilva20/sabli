@@ -1,5 +1,7 @@
 # Integração com a API Java
 
+Visão rápida e contratos já ligados. Arquitetura: [arquitetura](arquitetura.md). Setup: [desenvolvimento local](desenvolvimento-local.md).
+
 A API em `apps/api` autentica e persiste catálogo, mesas, pedidos/KDS, comandas e caixa. O frontend opera em dois modos, sem fallback silencioso:
 
 | Modo | `VITE_SABLI_MODE` | Dados |

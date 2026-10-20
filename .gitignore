@@ -14,6 +14,7 @@ blob-report
 !.env.example
 !.env.api
 !apps/api/.env.example
+compose.override.yaml
 .DS_Store
 *.tsbuildinfo
 apps/api/target/

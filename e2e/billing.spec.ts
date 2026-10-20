@@ -507,7 +507,7 @@ test('abre mesa, confirma pedido, quita a comanda e libera o salão', async ({ p
   await page.getByRole('button', { name: 'Registrar pagamento' }).click();
   await expect(page.getByText(/quitada/i).first()).toBeVisible();
   await page.getByRole('button', { name: 'Encerrar atendimento' }).click();
-  await expect(page.getByText(/liberada/i).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Encerrar atendimento' })).toHaveCount(0);
   await page.getByRole('link', { name: 'Mesas' }).click();
   await expect(page.getByRole('button', { name: /mesa 01, disponível/i })).toBeVisible();
 });

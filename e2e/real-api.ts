@@ -33,6 +33,7 @@ export async function provisionRealTenant(request: APIRequestContext): Promise<R
   const stamp = `${Date.now()}`;
   const email = `e2e-${stamp}@example.com`;
   const password = 'password10';
+  const bootstrapToken = process.env.SABLI_BOOTSTRAP_SIGNUP_TOKEN?.trim();
   const register = await request.post(`${API_V1}/auth/register-organization`, {
     data: {
       organizationName: `Org E2E ${stamp}`,
@@ -42,6 +43,7 @@ export async function provisionRealTenant(request: APIRequestContext): Promise<R
       name: 'Ana E2E',
       email,
       password,
+      ...(bootstrapToken ? { bootstrapToken } : {}),
     },
   });
   expect(register.ok(), await register.text()).toBeTruthy();

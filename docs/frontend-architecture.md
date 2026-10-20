@@ -31,7 +31,7 @@ O montador oferece duas regras de exemplo:
 - maior valor, depois de ajustar o sabor ao tamanho;
 - média proporcional das frações.
 
-Tamanhos: broto (1 sabor), média (2), grande (3) e família (4). O fator de tamanho também é racional. A precificação oficial será da API Java. A interface apenas demonstra.
+Tamanhos: broto (1 sabor), média (2), grande (3) e família (4). O fator de tamanho também é racional. No modo API a cotação sai do servidor (`POST .../catalog/pizza/quotes`). No DEMO as regras acima ficam no cliente.
 
 ## Breakpoints
 

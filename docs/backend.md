@@ -1,6 +1,6 @@
 # Backend Sabli
 
-API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade, catálogo, mesas, pedidos/KDS, comandas e caixa estão persistidos.
+API Java da plataforma. O frontend em `src/` opera em DEMO (autônomo) ou API (login real). Identidade, catálogo, mesas, pedidos/KDS, comandas e caixa estão persistidos. Setup reproduzível: [desenvolvimento local](desenvolvimento-local.md).
 
 ## Requisitos
 
@@ -17,34 +17,31 @@ npm ci
 npm run dev
 ```
 
-App em `http://127.0.0.1:5173/`.
+App DEMO em `http://127.0.0.1:5173/`. Modo API: `npm run dev:api` com a API no ar.
 
 | Comando | Uso |
 | --- | --- |
 | `npm run test` | Vitest |
-| `npm run test:e2e` | Playwright no preview |
+| `npm run test:e2e` | Playwright mockado |
+| `npm run test:e2e:real` | Playwright com PostgreSQL |
 | `npm run typecheck` / `npm run lint` / `npm run build` | Qualidade e build |
 
 ## API
 
-```bash
-cd apps/api
-cp .env.example .env
+Na raiz do repositório:
+
+```powershell
+copy apps\api\.env.example apps\api\.env
 ```
 
 Defina `SABLI_DATASOURCE_PASSWORD` e `SABLI_JWT_SECRET` (mínimo 32 caracteres) no `.env`. Não commite esse arquivo. Com `SABLI_REGISTRATION_MODE=BOOTSTRAP_TOKEN`, defina também `SABLI_BOOTSTRAP_SIGNUP_TOKEN`. Token vazio recusa o cadastro público.
 
-```bash
-docker compose --env-file .env up -d
+```powershell
+npm run db:up
+npm run api:dev
 ```
 
-Exporte as variáveis do `.env` no shell e suba a API:
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-No PowerShell: `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"` depois de definir as variáveis de ambiente.
+`db:up` usa o `compose.yaml` da raiz (PostgreSQL 17, healthcheck, volume local). `api:dev` carrega `apps/api/.env` e dispara o Maven Wrapper no perfil `local`. Maven global não é necessário.
 
 Saúde pública: `GET http://127.0.0.1:8080/actuator/health` → `{"status":"UP"}`.
 
@@ -52,13 +49,13 @@ Saúde pública: `GET http://127.0.0.1:8080/actuator/health` → `{"status":"UP"
 
 | Variável | Obrigatória | Função |
 | --- | --- | --- |
-| `SABLI_DATASOURCE_URL` | no perfil `local` | JDBC PostgreSQL 17 |
+| `SABLI_DATASOURCE_URL` | no perfil `local` | JDBC PostgreSQL 17. Default local `127.0.0.1:5435` |
 | `SABLI_DATASOURCE_USERNAME` | no perfil `local` | Usuário do banco |
 | `SABLI_DATASOURCE_PASSWORD` | no perfil `local` | Senha. Sem valor default no Git |
 | `SABLI_JWT_SECRET` | sim | Segredo HS256, no mínimo 32 caracteres. Sem default útil no Git |
 | `SABLI_REGISTRATION_MODE` | não | `DISABLED`, `OPEN` ou `BOOTSTRAP_TOKEN`. Default `BOOTSTRAP_TOKEN` |
 | `SABLI_BOOTSTRAP_SIGNUP_TOKEN` | no modo bootstrap | Convite para criar a primeira organização. Vazio recusa o cadastro |
-| `SABLI_CORS_ALLOWED_ORIGINS` | não | Origens permitidas, separadas por vírgula. Default inclui `5173`, `4173` e `4174` |
+| `SABLI_CORS_ALLOWED_ORIGINS` | não | Origens permitidas, separadas por vírgula. Default inclui `5173`, `4173`, `4174` e `4175` |
 | `SABLI_COOKIE_SECURE` | não | Cookie de refresh com `Secure`. Default `false` para HTTP local |
 | `SABLI_OPENAPI_ENABLED` | não | Liga `/v3/api-docs` no perfil `local`. Continua autenticado |
 | `SABLI_BCRYPT_STRENGTH` | não | Custo BCrypt. Default 12 |
@@ -119,7 +116,7 @@ cd apps/api
 
 No Windows: `mvnw.cmd -B verify`.
 
-Os testes cobrem identidade, catálogo, mesas, pedidos, comandas, caixa, isolamento multi-tenant, concorrência, Flyway até V7, OpenAPI e constraints do PostgreSQL.
+Os testes cobrem identidade, catálogo, mesas, pedidos, comandas, caixa, isolamento multi-tenant, concorrência, Flyway até V8, OpenAPI e constraints do PostgreSQL. Atalho: `npm run api:test`.
 
 ## Migrations
 
@@ -132,6 +129,7 @@ Arquivos em `apps/api/src/main/resources/db/migration/`, padrão Flyway `V{vers�
 - `V5` cria pedidos, snapshots de itens e tickets de cozinha.
 - `V6` cria comandas, pagamentos informados pelo operador e sessões de caixa.
 - `V7` guarda o último estabelecimento da conta para restaurar o contexto após o refresh.
+- `V8` registra auditoria do encerramento de atendimento (`empty` + motivo).
 
 Não há tabela de clientes. O Flyway aplica as migrations na subida da API e nos testes.
 
