@@ -10,6 +10,7 @@ import {
   type PlaceOrderBody,
   type ProductionStatus,
 } from '@/shared/api/orders';
+import { invalidateReports } from '@/shared/api/reports-queries';
 import { appQueryClient } from '@/shared/api/query-client';
 import { useAuthSession } from '@/shared/auth/session';
 
@@ -78,6 +79,7 @@ export function usePlaceOrderMutation() {
       if (!establishmentId) return;
       return Promise.all([
         invalidateOrders(establishmentId),
+        invalidateReports(establishmentId),
         appQueryClient.invalidateQueries({ queryKey: ['billing', establishmentId] }),
       ]);
     },

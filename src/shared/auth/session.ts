@@ -323,6 +323,14 @@ export function canFinance(context: ContextResponse | null): boolean {
   return context?.establishmentRole === 'CASHIER';
 }
 
+export function canViewReports(context: ContextResponse | null): boolean {
+  return canFinance(context);
+}
+
+export function canViewManagerReports(context: ContextResponse | null): boolean {
+  return canManageDining(context);
+}
+
 export function canCloseSettledTable(context: ContextResponse | null): boolean {
   return canOperateDining(context);
 }

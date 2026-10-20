@@ -6,6 +6,7 @@ import { SabliLogo } from '@/design-system/icons/logo';
 import { Avatar } from '@/design-system/components/media';
 import { Tooltip } from '@/design-system/components/overlays';
 import {
+  canViewReports,
   firstNameFrom,
   initialsFrom,
   roleLabel,
@@ -59,7 +60,12 @@ export function SidebarNav({
   onNavigate?: () => void;
 }) {
   const enabled = useUiStore((state) => state.enabledModules);
-  const items = businessNavigation.filter((item) => enabled.includes(item.id));
+  const auth = useAuthSession();
+  const items = businessNavigation.filter((item) => {
+    if (!enabled.includes(item.id)) return false;
+    if (isApiMode() && item.id === 'reports' && !canViewReports(auth.context)) return false;
+    return true;
+  });
   return (
     <nav aria-label="Módulos" className="grid gap-1">
       {items.map((item) => (

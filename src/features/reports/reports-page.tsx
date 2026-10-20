@@ -3,12 +3,19 @@ import { BarChart } from '@/design-system/components/charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/design-system/components/card';
 import { Banner } from '@/design-system/components/feedback';
 import { PageHeader, SegmentedControl } from '@/design-system/components/navigation';
+import { ApiReportsPage } from '@/features/reports/api-reports-page';
 import { useDashboardQuery } from '@/shared/api/hooks';
+import { isApiMode } from '@/shared/config/runtime';
 import { formatBRL } from '@/shared/domain/money';
 import { PERIOD_OPTIONS } from '@/shared/mocks/fixtures';
 import type { DashboardPeriod } from '@/shared/types/domain';
 
 export function ReportsPage() {
+  if (isApiMode()) return <ApiReportsPage />;
+  return <DemoReportsPage />;
+}
+
+function DemoReportsPage() {
   const [period, setPeriod] = useState<DashboardPeriod>('week');
   const query = useDashboardQuery(period);
   const data = query.data;

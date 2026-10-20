@@ -16,6 +16,7 @@ const apiReady: ModuleId[] = [
   'kitchen',
   'checks',
   'cash',
+  'reports',
 ];
 
 export function ModuleGate({ module, children }: { module: ModuleId; children: ReactNode }) {
