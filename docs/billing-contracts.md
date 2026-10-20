@@ -1,6 +1,6 @@
 # Contratos de comandas, pagamentos e caixa (Java ↔ TypeScript)
 
-O SPA ainda usa `demo/session.ts` e fixtures. Não substitua o data source neste checkpoint.
+No modo API o SPA consome os endpoints abaixo. O DEMO continua em `demo/session.ts`, sem fallback silencioso.
 
 PIX, débito e crédito no backend são **registros manuais** (`captureKind: MANUAL_DECLARED`). Não há confirmação bancária, adquirente ou TEF.
 

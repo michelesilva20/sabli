@@ -38,7 +38,7 @@ export function ApiHomePage() {
       </Card>
       <EmptyState
         title="Operação ainda não conectada neste modo"
-        description="O catálogo já vem do servidor. Mesas, pedidos, cozinha, comandas e caixa continuam só na demonstração. Esta tela não mostra fixtures como se fossem dados reais."
+        description="Catálogo, mesas, pedidos, cozinha, comandas e caixa deste estabelecimento vêm do servidor. Relatórios e equipe ainda não estão ligados. Esta tela não mostra fixtures como se fossem dados reais."
       />
     </div>
   );

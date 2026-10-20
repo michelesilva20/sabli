@@ -1,4 +1,6 @@
 import { Banknote, Clock, Receipt } from 'lucide-react';
+import { isApiMode } from '@/shared/config/runtime';
+import { ApiChecksPage } from '@/features/orders/api-checks-page';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { StatusBadge } from '@/design-system/components/badge';
@@ -57,6 +59,11 @@ function latestPreview(number: number, orders: CatalogOrder[]) {
 }
 
 export function ChecksPage() {
+  if (isApiMode()) return <ApiChecksPage />;
+  return <DemoChecksPage />;
+}
+
+function DemoChecksPage() {
   const session = useDemoSession();
   const ordersQuery = useOrdersQuery();
   const navigate = useNavigate();

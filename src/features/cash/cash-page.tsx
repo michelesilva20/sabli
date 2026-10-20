@@ -11,7 +11,9 @@ import { Input } from '@/design-system/components/input';
 import { CurrencyInput } from '@/design-system/components/number-input';
 import { PageHeader } from '@/design-system/components/navigation';
 import { pushToast } from '@/design-system/components/toast';
+import { ApiCashPage } from '@/features/cash/api-cash-page';
 import { BillSettlement } from '@/features/cash/bill-settlement';
+import { isApiMode } from '@/shared/config/runtime';
 import { drawerCashCents, PAYMENT_METHOD_LABEL, salesByMethod } from '@/shared/domain/bill';
 import { formatDateTime } from '@/shared/domain/date';
 import { formatBRL, sumCents } from '@/shared/domain/money';
@@ -35,6 +37,11 @@ const methods: { id: PaymentMethod; label: string }[] = [
 ];
 
 export function CashPage() {
+  if (isApiMode()) return <ApiCashPage />;
+  return <DemoCashPage />;
+}
+
+function DemoCashPage() {
   const session = useDemoSession();
   const [method, setMethod] = useState<PaymentMethod>('pix');
   const [amount, setAmount] = useState(0);

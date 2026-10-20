@@ -12,8 +12,12 @@ import { PageHeader, SegmentedControl } from '@/design-system/components/navigat
 import { Sheet } from '@/design-system/components/sheet';
 import { StatusBadge } from '@/design-system/components/badge';
 import { pushToast } from '@/design-system/components/toast';
+import { useBillByServiceQuery } from '@/shared/api/billing-queries';
+import { BILL_STATUS_LABEL } from '@/shared/api/billing';
+import { financeErrorMessage } from '@/shared/api/finance-errors';
 import {
   invalidateDining,
+  useCloseServiceMutation,
   useDiningHistoryQuery,
   useDiningTablesQuery,
   useOpenServiceMutation,
@@ -22,7 +26,14 @@ import {
 } from '@/shared/api/dining-queries';
 import { toDiningMapTable, type TableResponse } from '@/shared/api/dining';
 import { ApiError } from '@/shared/api/http-client';
-import { canManageDining, canOperateDining, useAuthSession } from '@/shared/auth/session';
+import {
+  canCloseSettledTable,
+  canManageDining,
+  canOperateDining,
+  canReadBill,
+  useAuthSession,
+} from '@/shared/auth/session';
+import { formatBRL } from '@/shared/domain/money';
 import {
   canBindDraftContext,
   setDraftContext,
@@ -37,6 +48,8 @@ export function ApiDiningPage() {
   const establishmentId = session.context?.establishment?.id;
   const canManage = canManageDining(session.context);
   const canOperate = canOperateDining(session.context);
+  const canReadFinance = canReadBill(session.context);
+  const canClose = canCloseSettledTable(session.context);
   const [mode, setMode] = useState<'map' | 'list'>('map');
   const [filter, setFilter] = useState<'all' | TableStatus>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -44,7 +57,9 @@ export function ApiDiningPage() {
   const [guests, setGuests] = useState(2);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<TableResponse | null>(null);
-  const [confirm, setConfirm] = useState<'reserve' | 'bill' | 'reopen' | 'pos' | null>(null);
+  const [confirm, setConfirm] = useState<'reserve' | 'bill' | 'reopen' | 'pos' | 'close' | null>(
+    null,
+  );
   const navigate = useNavigate();
   const openingLock = useRef(false);
 
@@ -53,14 +68,23 @@ export function ApiDiningPage() {
   const openMutation = useOpenServiceMutation();
   const billMutation = useRequestBillMutation();
   const reopenMutation = useReopenServiceMutation();
+  const closeMutation = useCloseServiceMutation();
 
   const tables = tablesQuery.data;
   const mapTables = useMemo(() => (tables ?? []).map(toDiningMapTable), [tables]);
   const selected = tables?.find((table) => table.id === selectedId) ?? null;
   const selectedMap = mapTables.find((table) => table.id === selectedId) ?? null;
   const selectedService = selected?.activeService ?? null;
+  const selectedBillQuery = useBillByServiceQuery(
+    selectedService?.id ?? null,
+    Boolean(canReadFinance && selectedService),
+  );
+  const selectedBill = selectedBillQuery.data;
   const busy =
-    openMutation.isPending || billMutation.isPending || reopenMutation.isPending;
+    openMutation.isPending ||
+    billMutation.isPending ||
+    reopenMutation.isPending ||
+    closeMutation.isPending;
   const counts = useMemo(() => {
     const next = {
       available: 0,
@@ -267,8 +291,12 @@ export function ApiDiningPage() {
               subtitle={
                 <>
                   {serving} em atendimento
-                  <span className="px-2">·</span>
-                  Consumo ainda não conectado
+                  {selectedBill ? (
+                    <>
+                      <span className="px-2">·</span>
+                      {BILL_STATUS_LABEL[selectedBill.status]} {formatBRL(selectedBill.remainingCents)}
+                    </>
+                  ) : null}
                 </>
               }
               tables={mapTables}
@@ -342,13 +370,23 @@ export function ApiDiningPage() {
             ) : null}
             {selectedMap.status === 'awaiting_bill' ? (
               <Alert title="Aguardando conta" tone="warning">
-                A conta foi pedida. A mesa continua ocupada até a quitação no caixa.
+                A conta foi pedida. A mesa continua ocupada até a quitação confirmada pelo servidor.
               </Alert>
             ) : null}
-            <Alert title="Comanda ainda não conectada">
-              Consumo, pagamentos e encerramento financeiro entram na integração de Billing e Caixa.
-              Nenhum valor demonstrativo é exibido aqui.
-            </Alert>
+            {selectedBill ? (
+              <Alert
+                title={`${BILL_STATUS_LABEL[selectedBill.status]} · ${formatBRL(selectedBill.remainingCents)}`}
+                tone={selectedBill.settled ? 'success' : 'info'}
+              >
+                Totais do servidor. Desconto persistido {formatBRL(selectedBill.discountCents)}.
+              </Alert>
+            ) : selectedService && canReadFinance && selectedBillQuery.isLoading ? (
+              <Skeleton className="h-16" />
+            ) : selectedService && canReadFinance && selectedBillQuery.error ? (
+              <Alert title="Não foi possível carregar a comanda" tone="danger">
+                {financeErrorMessage(selectedBillQuery.error)}
+              </Alert>
+            ) : null}
             <dl className="grid gap-2 text-sm">
               <div className="flex justify-between">
                 <dt>Área</dt>
@@ -417,6 +455,11 @@ export function ApiDiningPage() {
               {selectedMap.status === 'awaiting_bill' && canOperate ? (
                 <Button disabled={busy} onClick={() => setConfirm('reopen')}>
                   Reabrir atendimento
+                </Button>
+              ) : null}
+              {selectedBill?.settled && canClose && selectedMap.status !== 'available' ? (
+                <Button disabled={busy} onClick={() => setConfirm('close')}>
+                  Encerrar atendimento
                 </Button>
               ) : null}
               {canManage ? (
@@ -502,7 +545,8 @@ export function ApiDiningPage() {
         }
       >
         <p className="text-sm text-muted-foreground">
-          Encerramento financeiro permanece indisponível até a integração de Billing e Caixa.
+          A mesa fica aguardando pagamento. Quitação e encerramento só acontecem depois da
+          confirmação do servidor.
         </p>
       </Dialog>
       <Dialog
@@ -523,6 +567,46 @@ export function ApiDiningPage() {
       >
         <p className="text-sm text-muted-foreground">
           Descartar limpa os itens atuais e leva ao PDV desta mesa.
+        </p>
+      </Dialog>
+      <Dialog
+        open={confirm === 'close'}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null);
+        }}
+        title="Encerrar atendimento"
+        description="O servidor só libera a mesa se a conta estiver quitada."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selected || busy) return;
+                closeMutation.mutate(selected.id, {
+                  onSuccess: () => {
+                    setConfirm(null);
+                    setSelectedId(null);
+                    pushToast({
+                      title: `Mesa ${String(selected.number).padStart(2, '0')} liberada`,
+                      tone: 'success',
+                    });
+                  },
+                  onError: handleMutationError,
+                });
+              }}
+              loading={closeMutation.isPending}
+            >
+              Confirmar encerramento
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          {selectedBill?.settled
+            ? 'A conta está SETTLED. Encerrar devolve a mesa para disponível.'
+            : 'Se o saldo não estiver quitado, o backend recusa e a mesa permanece ocupada.'}
         </p>
       </Dialog>
       <Dialog
@@ -597,6 +681,9 @@ function mutationError(error: unknown) {
   if (error.code === 'SERVICE_NOT_OPEN') return 'Só é possível pedir conta em atendimento aberto.';
   if (error.code === 'SERVICE_NOT_AWAITING_BILL') {
     return 'Só é possível reabrir um atendimento que aguarda a conta.';
+  }
+  if (error.code === 'CLOSE_REQUIRES_SETTLEMENT') {
+    return 'Quite o saldo restante antes de liberar a mesa.';
   }
   if (error.status === 403) return 'Você não pode operar o salão neste estabelecimento.';
   return error.message || 'Não foi possível concluir a operação.';

@@ -219,6 +219,13 @@ export function reopenService(establishmentId: string, tableId: string) {
   });
 }
 
+export function closeService(establishmentId: string, tableId: string) {
+  return apiRequest(serviceResponseSchema, {
+    path: diningPath(establishmentId, `/tables/${tableId}/service/close`),
+    method: 'POST',
+  });
+}
+
 export function listTableHistory(establishmentId: string, tableId: string, page = 0, size = 10) {
   return apiRequest(servicePageSchema, {
     path: diningPath(establishmentId, `/tables/${tableId}/services`),
