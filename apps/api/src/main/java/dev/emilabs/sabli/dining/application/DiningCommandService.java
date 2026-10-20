@@ -1,5 +1,6 @@
 package dev.emilabs.sabli.dining.application;
 
+import dev.emilabs.sabli.billing.application.BillingCommandService;
 import dev.emilabs.sabli.dining.domain.DiningStatus;
 import dev.emilabs.sabli.dining.domain.DiningTable;
 import dev.emilabs.sabli.dining.domain.TableAvailability;
@@ -23,16 +24,19 @@ public class DiningCommandService {
   private final DiningTableRepository tables;
   private final TableServiceRepository services;
   private final UserAccountRepository users;
+  private final BillingCommandService billing;
 
   public DiningCommandService(
       DiningAccess access,
       DiningTableRepository tables,
       TableServiceRepository services,
-      UserAccountRepository users) {
+      UserAccountRepository users,
+      BillingCommandService billing) {
     this.access = access;
     this.tables = tables;
     this.services = services;
     this.users = users;
+    this.billing = billing;
   }
 
   @Transactional
@@ -171,10 +175,10 @@ public class DiningCommandService {
   public TableService closeService(UUID userId, UUID establishmentId, UUID tableId) {
     access.requireOperate(userId, establishmentId);
     lockTable(establishmentId, tableId);
-    requireLockedActive(establishmentId, tableId);
-    throw ApiException.conflict(
-        "CLOSE_REQUIRES_SETTLEMENT",
-        "O encerramento da mesa depende da quitação no módulo de caixa. Esta etapa não fecha atendimento.");
+    TableService service = requireLockedActive(establishmentId, tableId);
+    billing.requireSettledForClose(establishmentId, service);
+    service.close();
+    return service;
   }
 
   private DiningTable lockTable(UUID establishmentId, UUID tableId) {

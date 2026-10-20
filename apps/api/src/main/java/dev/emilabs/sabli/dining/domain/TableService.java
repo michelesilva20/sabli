@@ -47,6 +47,9 @@ public class TableService {
   @Column(name = "closed_at")
   private Instant closedAt;
 
+  @Column(name = "billing_started", nullable = false)
+  private boolean billingStarted;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private TableServiceStatus status;
@@ -79,6 +82,7 @@ public class TableService {
     service.hostName = hostName;
     service.openedAt = now;
     service.status = TableServiceStatus.OPEN;
+    service.billingStarted = false;
     return service;
   }
 
@@ -165,5 +169,18 @@ public class TableService {
 
   public void reopen() {
     status = TableServiceStatus.OPEN;
+  }
+
+  public boolean billingStarted() {
+    return billingStarted;
+  }
+
+  public void markBillingStarted() {
+    billingStarted = true;
+  }
+
+  public void close() {
+    status = TableServiceStatus.CLOSED;
+    closedAt = now();
   }
 }

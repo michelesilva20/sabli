@@ -1,6 +1,6 @@
 # Backend Sabli
 
-API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade, catálogo, mesas e pedidos/KDS estão persistidos. Caixa e pagamentos ainda não existem no backend.
+API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade, catálogo, mesas, pedidos/KDS, comandas e caixa estão persistidos.
 
 ## Requisitos
 
@@ -118,7 +118,7 @@ cd apps/api
 
 No Windows: `mvnw.cmd -B verify`.
 
-Os testes cobrem identidade, catálogo, mesas/atendimentos, isolamento multi-tenant, concorrência de abertura, Flyway até V4, OpenAPI e constraints do PostgreSQL.
+Os testes cobrem identidade, catálogo, mesas, pedidos, comandas, caixa, isolamento multi-tenant, concorrência, Flyway até V6, OpenAPI e constraints do PostgreSQL.
 
 ## Migrations
 
@@ -129,8 +129,9 @@ Arquivos em `apps/api/src/main/resources/db/migration/`, padrão Flyway `V{vers�
 - `V3` cria o catálogo e a precificação de pizza.
 - `V4` cria `dining_tables` e `table_services`.
 - `V5` cria pedidos, snapshots de itens e tickets de cozinha.
+- `V6` cria comandas, pagamentos informados pelo operador e sessões de caixa.
 
-Tabelas de pedidos, pagamentos e clientes ficam para os próximos checkpoints. O Flyway aplica as migrations na subida da API e nos testes.
+Não há tabela de clientes. O Flyway aplica as migrations na subida da API e nos testes.
 
 Não rode `flyway:repair` nem `flyway:clean` contra um banco compartilhado.
 
@@ -174,7 +175,7 @@ Cadastro da mesa e atendimento ativo são entidades distintas. A ocupação do m
 | Cadastro | `GET/PATCH /tables/{id}`, `PATCH .../availability`, `PATCH .../status` |
 | Atendimento ativo | `GET/POST /tables/{id}/service` |
 | Conta | `POST /tables/{id}/service/bill` e `/reopen` |
-| Encerramento | `POST /tables/{id}/service/close` — bloqueado até o caixa |
+| Encerramento | `POST /tables/{id}/service/close` — só com conta quitada |
 | Histórico | `GET /tables/{id}/services`, `GET /table-services` |
 
 `ADMIN`/`MANAGER` administram o cadastro. `WAITER` e `CASHIER` abrem atendimento e pedem conta. `KITCHEN` só lê.
@@ -190,11 +191,26 @@ Confirmação congela nomes, composição e preços. Idempotência por `Idempote
 | Fila da cozinha | `GET /kitchen/tickets` |
 | Avanço | `POST /kitchen/tickets/{id}/advance` e `.../items/{itemId}/advance` |
 
-Desconto promocional do SPA não entra no total. Encerramento da mesa continua `409 CLOSE_REQUIRES_SETTLEMENT`.
+Desconto promocional do SPA não entra no total. Encerramento da mesa exige quitação.
+
+## Comandas e caixa
+
+Totais vêm dos pedidos congelados. Pagamentos PIX/cartão são manuais. Uma sessão de caixa aberta por estabelecimento. Mapeamento TS: [billing-contracts.md](billing-contracts.md).
+
+| Recurso | Caminho |
+| --- | --- |
+| Comanda de mesa | `GET /api/v1/establishments/{id}/table-services/{serviceId}/bill` |
+| Conta de balcão | `GET /orders/{orderId}/bill` |
+| Pagamentos | `GET/POST /bills/{billId}/payments` + `Idempotency-Key` |
+| Caixa | `POST/GET /cash/sessions`, `GET /cash/sessions/current` |
+| Movimentos | `POST /cash/sessions/{id}/movements` (`SUPPLY` / `BLEED`) |
+| Fechamento | `POST /cash/sessions/{id}/close` |
+
+`CASHIER`/`ADMIN`/`MANAGER` pagam e operam o caixa. `WAITER` consulta a comanda e encerra mesa quitada. `KITCHEN` não vê financeiro.
 
 ## Limites deste checkpoint
 
-- Sem caixa, pagamentos ou faturamento. Encerramento de mesa sem quitação permanece bloqueado.
+- Sem adquirente, TEF, fiscal ou estorno. PIX e cartão são declaração do operador.
 - Sem MFA.
 - Sem integração React → API. `SabliDataSource` e a sessão demonstrativa permanecem.
 - Actuator expõe só `health`, sem detalhes.

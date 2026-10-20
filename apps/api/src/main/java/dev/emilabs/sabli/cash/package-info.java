@@ -1,4 +1,4 @@
 /**
- * Turno de caixa e movimentos da gaveta.
+ * Sessão de caixa por estabelecimento, gaveta em espécie e movimentos classificados.
  */
 package dev.emilabs.sabli.cash;

@@ -275,6 +275,10 @@ public class OrderCommandService {
         services
             .lockByIdAndEstablishmentId(command.tableServiceId(), establishmentId)
             .orElseThrow(ApiException::notFound);
+    if (service.billingStarted()) {
+      throw ApiException.unprocessable(
+          "PAYMENT_STARTED", "Não é possível incluir pedido depois que o pagamento foi iniciado.");
+    }
     if (service.status() == TableServiceStatus.AWAITING_BILL) {
       throw ApiException.unprocessable(
           "SERVICE_AWAITING_BILL", "Não é possível incluir pedido com a conta solicitada.");

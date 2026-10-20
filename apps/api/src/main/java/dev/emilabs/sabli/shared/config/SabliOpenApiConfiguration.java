@@ -27,6 +27,6 @@ public class SabliOpenApiConfiguration {
                 .title("Sabli API")
                 .version("0.1.0")
                 .description(
-                    "Identidade, catálogo, mesas e pedidos/KDS por estabelecimento. Caixa e pagamentos ficam para o próximo checkpoint."));
+                    "Identidade, catálogo, mesas, pedidos/KDS, comandas e caixa por estabelecimento. PIX e cartão são registros manuais, sem adquirente."));
   }
 }

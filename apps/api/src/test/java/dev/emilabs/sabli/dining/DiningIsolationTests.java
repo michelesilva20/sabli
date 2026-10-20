@@ -202,6 +202,31 @@ class DiningIsolationTests extends DiningSupport {
     assertThat(reopened.get("id").asText()).isEqualTo(opened.get("id").asText());
     assertThat(reopened.get("requestedBillAt").isNull()).isFalse();
     assertThat(reopened.get("requestedBillAt").asText()).startsWith(billed.get("requestedBillAt").asText().substring(0, 19));
+    JsonNode category =
+        postJson(
+            tenant.accessToken(),
+            "/api/v1/establishments/" + tenant.establishmentId() + "/catalog/categories",
+            "{\"name\":\"Bebidas\",\"slug\":\"bebidas-bil\"}",
+            201);
+    JsonNode drink =
+        postJson(
+            tenant.accessToken(),
+            "/api/v1/establishments/" + tenant.establishmentId() + "/catalog/products",
+            """
+            {"categoryId":"%s","name":"Refri","priceCents":800,"available":true}
+            """.formatted(category.get("id").asText()),
+            201);
+    mockMvc
+        .perform(
+            post("/api/v1/establishments/" + tenant.establishmentId() + "/orders")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .header("Idempotency-Key", "dining-unpaid")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"channel":"TABLE","tableServiceId":"%s","items":[{"productId":"%s","quantity":1}]}
+                    """.formatted(opened.get("id").asText(), drink.get("id").asText())))
+        .andExpect(status().isCreated());
     mockMvc
         .perform(
             post(tables(tenant.establishmentId(), "/" + table.get("id").asText() + "/service/close"))
