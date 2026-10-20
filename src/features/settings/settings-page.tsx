@@ -44,7 +44,7 @@ function ApiSettingsPage() {
         </CardContent>
       </Card>
       <Banner>
-        Relatórios e equipe ainda não estão ligados à API. A autorização continua no servidor.
+        Equipe ainda não está ligada à API. Relatórios já consultam o servidor do estabelecimento. A autorização continua no servidor.
       </Banner>
     </div>
   );

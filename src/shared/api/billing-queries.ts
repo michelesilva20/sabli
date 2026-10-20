@@ -14,6 +14,7 @@ import { financeErrorMessage } from '@/shared/api/finance-errors';
 import { ApiError } from '@/shared/api/http-client';
 import { invalidateDining } from '@/shared/api/dining-queries';
 import { invalidateOrders } from '@/shared/api/orders-queries';
+import { invalidateReports } from '@/shared/api/reports-queries';
 import { appQueryClient } from '@/shared/api/query-client';
 import { useAuthSession } from '@/shared/auth/session';
 import { clearPaymentAttempt, paymentAttemptKey } from '@/shared/billing/payment-attempt';
@@ -41,6 +42,7 @@ export function invalidateFinance(establishmentId: string) {
     invalidateBilling(establishmentId),
     invalidateDining(establishmentId),
     invalidateOrders(establishmentId),
+    invalidateReports(establishmentId),
     appQueryClient.invalidateQueries({ queryKey: ['cash', establishmentId] }),
   ]);
 }

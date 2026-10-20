@@ -25,6 +25,7 @@ function SabliTooltip({
   active,
   payload,
   label,
+  formatValue = formatBRL,
 }: {
   active?: boolean;
   payload?: Array<{
@@ -33,6 +34,7 @@ function SabliTooltip({
     payload?: { amount?: string };
   }>;
   label?: string | number;
+  formatValue?: (value: number) => string;
 }) {
   const point = payload?.[0];
   if (!active || !point) return null;
@@ -40,7 +42,7 @@ function SabliTooltip({
   const text =
     amount !== undefined
       ? `${Number(point.value ?? 0)}% · ${amount}`
-      : formatBRL(Number(point.value ?? 0));
+      : formatValue(Number(point.value ?? 0));
   return (
     <div className="rounded-[14px] border border-border bg-popover px-3 py-2 shadow-pop">
       <p className="text-xs font-extrabold text-popover-foreground">
@@ -88,12 +90,20 @@ function ChartFrame({
   );
 }
 
-export function BarChart({ title, data }: { title: string; data: ChartPoint[] }) {
+export function BarChart({
+  title,
+  data,
+  formatValue = formatBRL,
+}: {
+  title: string;
+  data: ChartPoint[];
+  formatValue?: (value: number) => string;
+}) {
   const reduce = useReducedMotion();
   return (
     <ChartFrame
       title={title}
-      summary={data.map((item) => ({ label: item.label, value: formatBRL(item.value) }))}
+      summary={data.map((item) => ({ label: item.label, value: formatValue(item.value) }))}
     >
       <ResponsiveContainer width="100%" height="100%">
         <ReBarChart
@@ -104,7 +114,10 @@ export function BarChart({ title, data }: { title: string; data: ChartPoint[] })
           <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 6" />
           <XAxis dataKey="label" tickLine={false} axisLine={false} tick={axisTick} interval={0} />
           <YAxis hide />
-          <Tooltip cursor={{ fill: 'var(--muted)', radius: 10 }} content={<SabliTooltip />} />
+          <Tooltip
+            cursor={{ fill: 'var(--muted)', radius: 10 }}
+            content={<SabliTooltip formatValue={formatValue} />}
+          />
           <Bar
             dataKey="value"
             name="Vendas"
