@@ -20,7 +20,7 @@ A API em `apps/api` autentica e persiste catálogo, mesas, pedidos/KDS, comandas
 - `GET/POST/PATCH /api/v1/establishments/{id}/catalog/**`
 - `POST /api/v1/establishments/{id}/catalog/pizza/quotes`
 - `GET/POST/PATCH /api/v1/establishments/{id}/tables/**`
-- `POST /api/v1/establishments/{id}/tables/{id}/service`, `/bill`, `/reopen` e `/close`
+- `POST /api/v1/establishments/{id}/tables/{id}/service`, `/bill`, `/reopen` e `/close` (`empty` + `reason` para atendimento sem consumo)
 - `GET /api/v1/establishments/{id}/table-services`
 - `GET /api/v1/establishments/{id}/table-services/{id}/bill`
 - `GET /api/v1/establishments/{id}/orders/{id}/bill`

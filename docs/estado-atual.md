@@ -41,7 +41,7 @@ Componentes visuais não importam fixtures e não chamam `fetch`. Dados reais pa
 | `/entrar` | Nova | Login real no modo API. No DEMO redireciona ao início. |
 | `/selecionar-estabelecimento` | Nova | Lista orgs/lojas de `/me` e valida `POST /me/context`. |
 | `/inicio` | Fundação | DEMO: indicadores de exemplo. API: contexto autorizado, sem fixtures. |
-| `/mesas` | Fundação | DEMO operacional. API: mapa, abertura, conta, quitação e encerramento reais. |
+| `/mesas` | Fundação | DEMO operacional. API: mapa, abertura, conta, quitação, encerramento quitado e encerramento sem consumo. |
 | `/pedidos` | Polida | DEMO operacional. API: lista persistida, detalhe e produção. |
 | `/pdv` | Fundação | DEMO operacional. API: rascunho volátil e confirmação no servidor. |
 | `/pdv/montar-pizza` | Fundação | DEMO operacional. API: cotação do servidor e inclusão no rascunho. |
@@ -84,7 +84,7 @@ Estabelecimento de exemplo no DEMO: Pizzaria do Centro. Operadora: Mariana Alves
 
 ## Git e entrega
 
-Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11. Caixa na PR #12. Autenticação React na #13. Catálogo React na #14. Mesas React na #15. Pedidos/KDS React segue empilhada em `feat/orders-api` (PR #16). Billing/caixa React segue em `feat/billing-api` sobre a #16.
+Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11. Caixa na PR #12. Autenticação React na #13. Catálogo React na #14. Mesas React na #15. Pedidos/KDS React segue empilhada em `feat/orders-api` (PR #16). Billing/caixa React segue em `feat/billing-api` (PR #18). Estabilização e E2E real seguem em `fix/empty-service-close`.
 
 ## Como rodar
 
@@ -107,12 +107,24 @@ No PowerShell: `$env:VITE_SABLI_MODE='api'; npm run dev` com a API no ar.
 | ------- | --- |
 | `npm run dev` | Desenvolvimento (DEMO por padrão) |
 | `npm run test` | Vitest |
-| `npm run test:e2e` | Playwright (DEMO em 4173, login API em 4174 com API mockada) |
+| `npm run test:e2e` | Playwright mockado (DEMO em 4173, login API em 4174) |
+| `npm run test:e2e:real` | Playwright contra API Java e PostgreSQL em `4175` |
 | `npm run lint` / `npm run typecheck` / `npm run build` | Qualidade e build |
+
+## Limitações para homologação
+
+- Sem sincronização instantânea entre dispositivos (polling do TanStack Query).
+- Relatórios e equipe ainda não ligados à API.
+- Um caixa aberto por estabelecimento; sem múltiplos terminais.
+- Sem estorno/reembolso.
+- PIX e cartão são `MANUAL_DECLARED`, sem adquirente ou TEF.
+- CSRF Spring desligado; refresh/logout com cookie recusam `Origin` fora da allowlist. `SameSite=Lax` e `HttpOnly`. Em HTTPS usar `SABLI_COOKIE_SECURE=true`.
+- Bundle SPA ainda acima de 500 kB gzip-parcial.
+- Cadastro de organização em produção deve permanecer `BOOTSTRAP_TOKEN` ou `DISABLED`.
 
 ## Como continuar
 
-O próximo passo comercial é o Checkpoint 2.1F. Não iniciar isso automaticamente.
+O ciclo operacional persistente está pronto para avaliação de homologação. Não iniciar módulos novos automaticamente.
 
 ## Referência visual
 

@@ -383,6 +383,86 @@ class BillingIsolationTests extends BillingSupport {
   }
 
   @Test
+  void emptyCloseIsBlockedAfterConfirmedOrder() throws Exception {
+    Tenant tenant = registerTenant("has");
+    JsonNode drink = createDrink(tenant);
+    JsonNode table = createTable(tenant, 9);
+    JsonNode service = openService(tenant, table.get("id").asText());
+    placeTableOrder(tenant, service.get("id").asText(), drink.get("id").asText(), 1, "has-ord");
+    mockMvc
+        .perform(
+            post(tables(tenant.establishmentId(), "/" + table.get("id").asText() + "/service/close"))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"empty\":true,\"reason\":\"Desistiu\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CLOSE_HAS_CONSUMPTION"));
+  }
+
+  @Test
+  void emptyCloseRacesConfirmedOrder() throws Exception {
+    Tenant tenant = registerTenant("race");
+    JsonNode drink = createDrink(tenant);
+    JsonNode table = createTable(tenant, 7);
+    JsonNode service = openService(tenant, table.get("id").asText());
+    String closePath = tables(tenant.establishmentId(), "/" + table.get("id").asText() + "/service/close");
+    String orderPath = orders(tenant.establishmentId());
+    CountDownLatch start = new CountDownLatch(1);
+    try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+      Future<Integer> close =
+          pool.submit(
+              () -> {
+                start.await(5, TimeUnit.SECONDS);
+                return mockMvc
+                    .perform(
+                        post(closePath)
+                            .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"empty\":true,\"reason\":\"Mesa vazia\"}"))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus();
+              });
+      Future<Integer> order =
+          pool.submit(
+              () -> {
+                start.await(5, TimeUnit.SECONDS);
+                return mockMvc
+                    .perform(
+                        post(orderPath)
+                            .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                            .header("Idempotency-Key", "race-ord")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(
+                                """
+                                {"channel":"TABLE","tableServiceId":"%s","items":[{"productId":"%s","quantity":1}]}
+                                """.formatted(service.get("id").asText(), drink.get("id").asText())))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus();
+              });
+      start.countDown();
+      List<Integer> codes = List.of(close.get(20, TimeUnit.SECONDS), order.get(20, TimeUnit.SECONDS));
+      assertThat(codes).containsAnyOf(200, 201);
+      if (codes.get(0) == 200) {
+        assertThat(codes.get(1)).isNotEqualTo(201);
+        mockMvc
+            .perform(
+                get(tables(tenant.establishmentId(), "/" + table.get("id").asText()))
+                    .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+            .andExpect(jsonPath("$.occupancy").value("AVAILABLE"));
+      } else {
+        assertThat(codes.get(1)).isEqualTo(201);
+        mockMvc
+            .perform(
+                get(tables(tenant.establishmentId(), "/" + table.get("id").asText()))
+                    .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+            .andExpect(jsonPath("$.occupancy").value(org.hamcrest.Matchers.not("AVAILABLE")));
+      }
+    }
+  }
+
+  @Test
   void rbacSisterTenantsAndSuspendedEstablishment() throws Exception {
     Tenant owner = registerTenant("fin");
     Tenant staff = registerTenant("stf");

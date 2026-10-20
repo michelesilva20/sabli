@@ -137,7 +137,7 @@ export function ApiBillPanel({
 
   function closeTable() {
     if (!bill?.tableId || busy) return;
-    closeMutation.mutate(bill.tableId, {
+    closeMutation.mutate({ tableId: bill.tableId }, {
       onSuccess: () => {
         pushToast({
           title: `${billChannelLabel(bill)} liberada`,
@@ -173,7 +173,7 @@ export function ApiBillPanel({
       {!canPay && remaining > 0 ? (
         <Banner>Consulta liberada. Só o caixa registra pagamentos neste estabelecimento.</Banner>
       ) : null}
-      {bill.settled && canClose && bill.kind === 'TABLE' ? (
+      {bill.settled && bill.totalCents > 0 && canClose && bill.kind === 'TABLE' ? (
         <Button onClick={closeTable} loading={closeMutation.isPending} disabled={busy}>
           Encerrar atendimento
         </Button>

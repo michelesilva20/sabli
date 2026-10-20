@@ -4,6 +4,7 @@ import dev.emilabs.sabli.billing.application.BillingCommandService;
 import dev.emilabs.sabli.dining.domain.DiningStatus;
 import dev.emilabs.sabli.dining.domain.DiningTable;
 import dev.emilabs.sabli.dining.domain.TableAvailability;
+import dev.emilabs.sabli.dining.domain.ServiceCloseKind;
 import dev.emilabs.sabli.dining.domain.TableService;
 import dev.emilabs.sabli.dining.domain.TableServiceStatus;
 import dev.emilabs.sabli.identity.domain.Establishment;
@@ -172,13 +173,37 @@ public class DiningCommandService {
   }
 
   @Transactional
-  public TableService closeService(UUID userId, UUID establishmentId, UUID tableId) {
+  public TableService closeService(UUID userId, UUID establishmentId, UUID tableId, CloseCommand command) {
     access.requireOperate(userId, establishmentId);
     lockTable(establishmentId, tableId);
     TableService service = requireLockedActive(establishmentId, tableId);
+    UserAccount actor = users.findById(userId).orElseThrow(ApiException::unauthorized);
+    if (command.empty()) {
+      String reason = requireEmptyReason(command.reason());
+      billing.requireEmptyForClose(establishmentId, service);
+      service.close(ServiceCloseKind.EMPTY, actor.id(), actor.name(), reason);
+      return service;
+    }
     billing.requireSettledForClose(establishmentId, service);
-    service.close();
+    service.close(ServiceCloseKind.SETTLED, actor.id(), actor.name(), trimToNull(command.reason()));
     return service;
+  }
+
+  private static String requireEmptyReason(String reason) {
+    String value = reason == null ? "" : reason.trim();
+    if (value.length() < 3 || value.length() > 140) {
+      throw ApiException.unprocessable(
+          "CLOSE_EMPTY_REASON", "Informe um motivo de 3 a 140 caracteres para encerrar sem consumo.");
+    }
+    return value;
+  }
+
+  private static String trimToNull(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
   private DiningTable lockTable(UUID establishmentId, UUID tableId) {
@@ -230,4 +255,6 @@ public class DiningCommandService {
       Integer layoutY,
       TableAvailability availability,
       Integer version) {}
+
+  public record CloseCommand(boolean empty, String reason) {}
 }

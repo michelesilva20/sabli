@@ -26,4 +26,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
   List<Order> findByEstablishmentIdAndTableServiceIdOrderByPlacedAtAscIdAsc(
       UUID establishmentId, UUID tableServiceId);
+
+  boolean existsByEstablishmentIdAndTableServiceId(UUID establishmentId, UUID tableServiceId);
 }

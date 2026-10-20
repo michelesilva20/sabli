@@ -6,6 +6,7 @@ import { occupancyEdge } from '@/features/dining/dining-occupancy';
 import { Alert, EmptyState, Skeleton } from '@/design-system/components/feedback';
 import { Button } from '@/design-system/components/button';
 import { Checkbox } from '@/design-system/components/choice';
+import { Input } from '@/design-system/components/input';
 import { Dialog } from '@/design-system/components/dialog';
 import { NumberInput } from '@/design-system/components/number-input';
 import { PageHeader, SegmentedControl } from '@/design-system/components/navigation';
@@ -57,9 +58,10 @@ export function ApiDiningPage() {
   const [guests, setGuests] = useState(2);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<TableResponse | null>(null);
-  const [confirm, setConfirm] = useState<'reserve' | 'bill' | 'reopen' | 'pos' | 'close' | null>(
-    null,
-  );
+  const [confirm, setConfirm] = useState<
+    'reserve' | 'bill' | 'reopen' | 'pos' | 'close' | 'close-empty' | null
+  >(null);
+  const [emptyReason, setEmptyReason] = useState('');
   const navigate = useNavigate();
   const openingLock = useRef(false);
 
@@ -80,6 +82,13 @@ export function ApiDiningPage() {
     Boolean(canReadFinance && selectedService),
   );
   const selectedBill = selectedBillQuery.data;
+  const emptyBill =
+    Boolean(selectedBill) &&
+    !selectedBill!.settled &&
+    selectedBill!.totalCents === 0 &&
+    selectedBill!.paidCents === 0 &&
+    selectedBill!.orders.length === 0;
+  const settledBill = Boolean(selectedBill?.settled && selectedBill.totalCents > 0);
   const busy =
     openMutation.isPending ||
     billMutation.isPending ||
@@ -457,9 +466,21 @@ export function ApiDiningPage() {
                   Reabrir atendimento
                 </Button>
               ) : null}
-              {selectedBill?.settled && canClose && selectedMap.status !== 'available' ? (
+              {settledBill && canClose && selectedMap.status !== 'available' ? (
                 <Button disabled={busy} onClick={() => setConfirm('close')}>
                   Encerrar atendimento
+                </Button>
+              ) : null}
+              {emptyBill && canClose && selectedMap.status !== 'available' ? (
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setEmptyReason('');
+                    setConfirm('close-empty');
+                  }}
+                >
+                  Encerrar sem consumo
                 </Button>
               ) : null}
               {canManage ? (
@@ -496,6 +517,14 @@ export function ApiDiningPage() {
                       <p className="text-xs text-muted-foreground">
                         {item.hostName} · {formatDateTime(item.openedAt)}
                       </p>
+                      {item.status === 'CLOSED' ? (
+                        <p className="text-xs text-muted-foreground">
+                          {item.closeKind === 'EMPTY' ? 'Sem consumo' : 'Quitado'}
+                          {item.closedByName ? ` · ${item.closedByName}` : ''}
+                          {item.closedAt ? ` · ${formatDateTime(item.closedAt)}` : ''}
+                          {item.closeReason ? ` · ${item.closeReason}` : ''}
+                        </p>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -584,7 +613,7 @@ export function ApiDiningPage() {
             <Button
               onClick={() => {
                 if (!selected || busy) return;
-                closeMutation.mutate(selected.id, {
+                closeMutation.mutate({ tableId: selected.id }, {
                   onSuccess: () => {
                     setConfirm(null);
                     setSelectedId(null);
@@ -604,9 +633,62 @@ export function ApiDiningPage() {
         }
       >
         <p className="text-sm text-muted-foreground">
-          {selectedBill?.settled
+          {settledBill
             ? 'A conta está SETTLED. Encerrar devolve a mesa para disponível.'
             : 'Se o saldo não estiver quitado, o backend recusa e a mesa permanece ocupada.'}
+        </p>
+      </Dialog>
+      <Dialog
+        open={confirm === 'close-empty'}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null);
+        }}
+        title="Encerrar sem consumo?"
+        description="Não houve pedido nem pagamento. Esta ação não registra receita."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={emptyReason.trim().length < 3 || busy}
+              onClick={() => {
+                if (!selected || busy || emptyReason.trim().length < 3) return;
+                closeMutation.mutate(
+                  { tableId: selected.id, empty: true, reason: emptyReason.trim() },
+                  {
+                    onSuccess: () => {
+                      setConfirm(null);
+                      setSelectedId(null);
+                      pushToast({
+                        title: `Mesa ${String(selected.number).padStart(2, '0')} liberada`,
+                        description: 'Atendimento encerrado sem consumo.',
+                        tone: 'success',
+                      });
+                    },
+                    onError: handleMutationError,
+                  },
+                );
+              }}
+              loading={closeMutation.isPending}
+            >
+              Confirmar encerramento
+            </Button>
+          </>
+        }
+      >
+        <label className="grid gap-1 text-sm font-bold">
+          Motivo
+          <Input
+            value={emptyReason}
+            onChange={(event) => setEmptyReason(event.target.value)}
+            maxLength={140}
+            placeholder="Ex.: cliente desistiu"
+            aria-label="Motivo do encerramento sem consumo"
+          />
+        </label>
+        <p className="text-sm text-muted-foreground">
+          O servidor recusa se existir pedido confirmado ou pagamento. O histórico permanece.
         </p>
       </Dialog>
       <Dialog

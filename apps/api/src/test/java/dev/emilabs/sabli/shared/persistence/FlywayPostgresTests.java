@@ -21,7 +21,7 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
 
   @Test
   void appliesCatalogMigrationAgainstPostgres() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
     assertThat(
             jdbcTemplate.queryForObject(
                 "select extname from pg_extension where extname = 'pgcrypto'", String.class))
@@ -44,6 +44,17 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
                 """,
                 Integer.class))
         .isEqualTo(28);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                select count(*)
+                from information_schema.columns
+                where table_schema = 'public'
+                  and table_name = 'table_services'
+                  and column_name in ('closed_by_user_id', 'closed_by_name', 'close_reason', 'close_kind')
+                """,
+                Integer.class))
+        .isEqualTo(4);
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -234,13 +245,16 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
         """
         insert into table_services
           (id, table_id, establishment_id, organization_id, guest_count, opened_by_user_id,
-           host_name, opened_at, closed_at, status, version, created_at, updated_at)
-        values (?, ?, ?, ?, 1, ?, 'Host', now(), now(), 'CLOSED', 0, now(), now())
+           host_name, opened_at, closed_at, status, version, created_at, updated_at,
+           closed_by_user_id, closed_by_name, close_kind)
+        values (?, ?, ?, ?, 1, ?, 'Host', now(), now(), 'CLOSED', 0, now(), now(),
+                ?, 'Host', 'SETTLED')
         """,
         UUID.randomUUID(),
         seed.tableA(),
         seed.estA(),
         seed.orgId(),
+        seed.userId(),
         seed.userId());
     jdbcTemplate.update(
         """

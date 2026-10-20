@@ -409,6 +409,77 @@ class DiningIsolationTests extends DiningSupport {
             org.hamcrest.Matchers.is("OPEN"), org.hamcrest.Matchers.is("AWAITING_BILL"))));
   }
 
+  @Test
+  void emptyOpenBillIsNotSettledAndCloseRequiresExplicitReason() throws Exception {
+    Tenant tenant = registerTenant("emp");
+    JsonNode table = createTable(tenant, 4, 4);
+    JsonNode opened =
+        postJson(
+            tenant.accessToken(),
+            tables(tenant.establishmentId(), "/" + table.get("id").asText() + "/service"),
+            "{\"guests\":2}",
+            201);
+    mockMvc
+        .perform(
+            get("/api/v1/establishments/"
+                + tenant.establishmentId()
+                + "/table-services/"
+                + opened.get("id").asText()
+                + "/bill")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("OPEN"))
+        .andExpect(jsonPath("$.settled").value(false))
+        .andExpect(jsonPath("$.totalCents").value(0))
+        .andExpect(jsonPath("$.paidCents").value(0))
+        .andExpect(jsonPath("$.orders.length()").value(0));
+    mockMvc
+        .perform(
+            post(tables(tenant.establishmentId(), "/" + table.get("id").asText() + "/service/close"))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CLOSE_REQUIRES_SETTLEMENT"));
+    mockMvc
+        .perform(
+            post(tables(tenant.establishmentId(), "/" + table.get("id").asText() + "/service/close"))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"empty\":true}"))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code").value("CLOSE_EMPTY_REASON"));
+    JsonNode closed =
+        postJson(
+            tenant.accessToken(),
+            tables(tenant.establishmentId(), "/" + table.get("id").asText() + "/service/close"),
+            "{\"empty\":true,\"reason\":\"Cliente desistiu\"}",
+            200);
+    assertThat(closed.get("status").asText()).isEqualTo("CLOSED");
+    assertThat(closed.get("closeKind").asText()).isEqualTo("EMPTY");
+    assertThat(closed.get("closeReason").asText()).isEqualTo("Cliente desistiu");
+    assertThat(closed.get("closedByName").asText()).startsWith("Admin ");
+    assertThat(closed.get("closedByUserId").asText()).isEqualTo(tenant.userId().toString());
+    mockMvc
+        .perform(
+            get(tables(tenant.establishmentId(), "/" + table.get("id").asText()))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.occupancy").value("AVAILABLE"));
+    Integer payments =
+        jdbcTemplate.queryForObject(
+            "select count(*) from bill_payments p join bills b on b.id = p.bill_id where b.establishment_id = ?",
+            Integer.class,
+            tenant.establishmentId());
+    Integer sales =
+        jdbcTemplate.queryForObject(
+            "select count(*) from cash_movements where establishment_id = ? and type = 'SALE'",
+            Integer.class,
+            tenant.establishmentId());
+    assertThat(payments).isZero();
+    assertThat(sales).isZero();
+  }
+
   private int openStatus(String token, String path, CountDownLatch start) throws Exception {
     start.await(5, TimeUnit.SECONDS);
     return mockMvc

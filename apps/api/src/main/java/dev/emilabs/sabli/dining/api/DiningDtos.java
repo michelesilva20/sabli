@@ -4,6 +4,7 @@ import dev.emilabs.sabli.dining.application.DiningCommandService.TableCommand;
 import dev.emilabs.sabli.dining.domain.DiningStatus;
 import dev.emilabs.sabli.dining.domain.DiningTable;
 import dev.emilabs.sabli.dining.domain.Occupancy;
+import dev.emilabs.sabli.dining.domain.ServiceCloseKind;
 import dev.emilabs.sabli.dining.domain.TableAvailability;
 import dev.emilabs.sabli.dining.domain.TableOccupancy;
 import dev.emilabs.sabli.dining.domain.TableService;
@@ -47,6 +48,8 @@ public final class DiningDtos {
   public record StatusRequest(@NotNull DiningStatus status, Integer version) {}
 
   public record OpenServiceRequest(@NotNull @Min(1) Integer guests) {}
+
+  public record CloseServiceRequest(Boolean empty, @Size(max = 140) String reason) {}
 
   public record TableResponse(
       UUID id,
@@ -95,6 +98,10 @@ public final class DiningDtos {
       Instant openedAt,
       Instant requestedBillAt,
       Instant closedAt,
+      UUID closedByUserId,
+      String closedByName,
+      String closeReason,
+      ServiceCloseKind closeKind,
       int version) {
     static ServiceResponse from(TableService service) {
       return new ServiceResponse(
@@ -108,6 +115,10 @@ public final class DiningDtos {
           service.openedAt(),
           service.requestedBillAt(),
           service.closedAt(),
+          service.closedByUserId(),
+          service.closedByName(),
+          service.closeReason(),
+          service.closeKind(),
           service.version());
     }
   }

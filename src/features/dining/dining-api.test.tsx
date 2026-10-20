@@ -113,9 +113,9 @@ function stubDining(role: Role = 'ADMIN', scenario: 'ok' | 'suspended' | 'stale'
         totalCents: occupied ? 800 : 0,
         paidCents: 0,
         remainingCents: occupied ? 800 : 0,
-        status: occupied ? 'OPEN' : 'SETTLED',
-        settled: !occupied,
-        settledAt: occupied ? null : '2026-10-20T12:00:00Z',
+        status: occupied ? 'OPEN' : 'OPEN',
+        settled: false,
+        settledAt: null,
         version: 0,
         orders: occupied
           ? [
@@ -235,7 +235,16 @@ function stubDining(role: Role = 'ADMIN', scenario: 'ok' | 'suspended' | 'stale'
     }
     if (tail[0] === 'service' && tail[1] === 'close' && method === 'POST') {
       if (!canOperate) return problem(403, 'FORBIDDEN', 'Acesso negado', 'Você não pode executar esta ação.');
+      const body = JSON.parse(bodyText || '{}') as { empty?: boolean; reason?: string };
       if (table.activeService?.id === serviceOpenId) {
+        if (body.empty) {
+          return problem(
+            409,
+            'CLOSE_HAS_CONSUMPTION',
+            'Há consumo',
+            'Há pedidos confirmados neste atendimento. Quite a conta antes de encerrar.',
+          );
+        }
         return problem(
           409,
           'CLOSE_REQUIRES_SETTLEMENT',
@@ -243,10 +252,36 @@ function stubDining(role: Role = 'ADMIN', scenario: 'ok' | 'suspended' | 'stale'
           'O atendimento só pode ser encerrado com a conta quitada.',
         );
       }
+      if (!body.empty) {
+        return problem(
+          409,
+          'CLOSE_REQUIRES_SETTLEMENT',
+          'Conta em aberto',
+          'O atendimento só pode ser encerrado com a conta quitada.',
+        );
+      }
+      const reason = body.reason?.trim() ?? '';
+      if (reason.length < 3) {
+        return problem(422, 'CLOSE_EMPTY_REASON', 'Motivo obrigatório', 'Informe um motivo de 3 a 140 caracteres.');
+      }
       const closed = table.activeService
-        ? { ...table.activeService, status: 'CLOSED' as const, closedAt: '2026-10-20T13:00:00Z' }
+        ? {
+            ...table.activeService,
+            status: 'CLOSED' as const,
+            closedAt: '2026-10-20T13:00:00Z',
+            closedByUserId: apiMe.user.id,
+            closedByName: apiMe.user.name,
+            closeReason: reason,
+            closeKind: 'EMPTY' as const,
+          }
         : null;
       writeTable({ ...table, activeService: null });
+      if (closed) {
+        history.set(table.id, [
+          closed,
+          ...(history.get(table.id) ?? []).filter((item) => item.id !== closed.id),
+        ]);
+      }
       return jsonResponse(closed);
     }
     if (tail[0] === 'service' && tail[1] === 'reopen' && method === 'POST') {
@@ -343,14 +378,43 @@ describe('mesas API', () => {
     expect(await screen.findByText(/atendimento aberto na mesa 01/i)).toBeInTheDocument();
     expect(await within(sheet).findByText('Ana Costa')).toBeInTheDocument();
     expect(within(sheet).getByText('Há um atendimento aberto nesta mesa.')).toBeInTheDocument();
-    expect(await within(sheet).findByText(/quitado/i)).toBeInTheDocument();
+    expect(await within(sheet).findByText(/pendente/i)).toBeInTheDocument();
+    expect(within(sheet).queryByRole('button', { name: 'Encerrar atendimento' })).not.toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Encerrar sem consumo' })).toBeInTheDocument();
     await user.click(within(sheet).getByRole('button', { name: 'Pedir conta' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar pedido de conta' }));
     expect(await within(sheet).findByText(/a mesa continua ocupada até a quitação/i)).toBeInTheDocument();
     await user.click(within(sheet).getByRole('button', { name: 'Reabrir atendimento' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar reabertura' }));
     expect(await within(sheet).findByText('Há um atendimento aberto nesta mesa.')).toBeInTheDocument();
-    expect(within(sheet).getByRole('button', { name: 'Encerrar atendimento' })).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Encerrar sem consumo' })).toBeInTheDocument();
+  });
+
+  it('encerra atendimento vazio só com confirmação e motivo', async () => {
+    const fetchMock = await enterCentro();
+    const user = userEvent.setup();
+    renderApp('/mesas');
+    await user.click(await screen.findByRole('button', { name: /mesa 01, disponível/i }));
+    const sheet = await screen.findByRole('dialog', { name: /mesa 01/i });
+    await user.click(within(sheet).getByRole('button', { name: 'Abrir atendimento' }));
+    await user.click(await within(sheet).findByRole('button', { name: 'Encerrar sem consumo' }));
+    expect(await screen.findByRole('heading', { name: 'Encerrar sem consumo?' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirmar encerramento' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Motivo do encerramento sem consumo'), 'Cliente desistiu');
+    await user.click(screen.getByRole('button', { name: 'Confirmar encerramento' }));
+    expect(await screen.findByText(/mesa 01 liberada/i)).toBeInTheDocument();
+    const closed = fetchMock.mock.calls.find((call) => {
+      const init = call[1] as RequestInit | undefined;
+      return (init?.method ?? 'GET') === 'POST' && String(call[0]).includes('/service/close');
+    });
+    expect(closed).toBeTruthy();
+    const body = JSON.parse(String((closed?.[1] as RequestInit).body));
+    expect(body.empty).toBe(true);
+    expect(body.reason).toBe('Cliente desistiu');
+    await user.click(await screen.findByRole('button', { name: /mesa 01, disponível/i }));
+    const reopened = await screen.findByRole('dialog', { name: /mesa 01/i });
+    expect(await within(reopened).findByText(/sem consumo/i)).toBeInTheDocument();
+    expect(within(reopened).getByText(/cliente desistiu/i)).toBeInTheDocument();
   });
 
   it('exige confirmação para mesa reservada e recusa dupla abertura', async () => {

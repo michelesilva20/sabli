@@ -18,6 +18,15 @@ export function financeErrorMessage(error: unknown): string {
   if (error.code === 'CLOSE_REQUIRES_SETTLEMENT') {
     return 'Quite o saldo restante antes de liberar a mesa.';
   }
+  if (error.code === 'CLOSE_HAS_CONSUMPTION') {
+    return 'Há pedidos confirmados. Quite a conta antes de encerrar.';
+  }
+  if (error.code === 'CLOSE_HAS_PAYMENTS') {
+    return 'Há pagamentos registrados. Encerrar sem consumo não é permitido.';
+  }
+  if (error.code === 'CLOSE_EMPTY_REASON') {
+    return 'Informe um motivo de 3 a 140 caracteres para encerrar sem consumo.';
+  }
   if (error.code === 'PAYMENT_STARTED') {
     return 'Não é possível incluir pedido depois que o pagamento foi iniciado.';
   }

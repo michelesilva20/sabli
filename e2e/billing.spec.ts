@@ -388,7 +388,7 @@ async function mockBillingApi(page: Page) {
       return;
     }
     if (method === 'POST' && url.includes(`/tables/${tableId}/service/close`)) {
-      if (!bill.settled) {
+      if (!bill.settled || bill.totalCents <= 0) {
         await route.fulfill({
           status: 409,
           contentType: 'application/problem+json',
@@ -396,15 +396,23 @@ async function mockBillingApi(page: Page) {
         });
         return;
       }
-      table.service = table.service
-        ? { ...table.service, status: 'CLOSED', closedAt: '2026-10-19T13:10:00Z' }
+      const closed = table.service
+        ? {
+            ...table.service,
+            status: 'CLOSED' as const,
+            closedAt: '2026-10-19T13:10:00Z',
+            closedByUserId: userId,
+            closedByName: 'Ana Costa',
+            closeKind: 'SETTLED' as const,
+            closeReason: null,
+          }
         : null;
+      table.service = null;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(table.service),
+        body: JSON.stringify(closed),
       });
-      table.service = null;
       return;
     }
     if (method === 'POST' && url.includes(`/tables/${tableId}/service/bill`)) {
