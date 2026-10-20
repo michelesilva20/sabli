@@ -1,6 +1,6 @@
 # Integração futura com a API Java
 
-A API em `apps/api` já autentica e persiste o catálogo. O frontend continua em `SabliDataSource` (`src/shared/api/data-source.ts`) com fixtures e atraso curto. O mapeamento dos contratos está em [catalog-contracts.md](catalog-contracts.md).
+A API em `apps/api` já autentica, persiste o catálogo e as mesas/atendimentos. O frontend continua em `SabliDataSource` (`src/shared/api/data-source.ts`) com fixtures e atraso curto. O mapeamento está em [catalog-contracts.md](catalog-contracts.md) e [dining-contracts.md](dining-contracts.md).
 
 Quando a API existir, a troca prevista é substituir `mockDataSource` por um cliente HTTP, mantendo os mesmos métodos e os tipos de `src/shared/types/domain.ts`.
 
