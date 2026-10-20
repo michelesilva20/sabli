@@ -106,10 +106,11 @@ export async function bootstrapSession(): Promise<void> {
     });
     writeAccessToken(tokens.accessToken);
     const me = await apiRequest(meResponseSchema, { path: '/me' });
+    const context = await hydrateRememberedContext(me);
     emit({
       status: 'authenticated',
       me,
-      context: null,
+      context,
       lastError: null,
       unavailable: false,
     });
@@ -139,10 +140,11 @@ export async function login(email: string, password: string): Promise<MeResponse
     });
     writeAccessToken(tokens.accessToken);
     const me = await apiRequest(meResponseSchema, { path: '/me' });
+    const context = await hydrateRememberedContext(me);
     emit({
       status: 'authenticated',
       me,
-      context: null,
+      context,
       lastError: null,
       unavailable: false,
     });
@@ -205,6 +207,7 @@ export async function selectEstablishment(
     if (!context.establishment) {
       throw new ApiError(403, 'FORBIDDEN', 'Acesso negado', 'Selecione um estabelecimento autorizado.');
     }
+    await appQueryClient.cancelQueries();
     appQueryClient.clear();
     emit({
       ...snapshot,
@@ -228,9 +231,63 @@ export async function selectEstablishment(
   }
 }
 
+export async function forgetRememberedContext(): Promise<void> {
+  try {
+    await apiRequest(z.undefined(), {
+      path: '/me/context',
+      method: 'DELETE',
+    });
+  } catch {
+    // A invalidação local segue mesmo se o servidor já tiver esquecido o contexto.
+  }
+}
+
+async function hydrateRememberedContext(me: MeResponse): Promise<ContextResponse | null> {
+  try {
+    return await restoreRememberedContext(me);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) throw error;
+    return null;
+  }
+}
+
+async function restoreRememberedContext(me: MeResponse): Promise<ContextResponse | null> {
+  if (!me.lastOrganizationId || !me.lastEstablishmentId) {
+    return null;
+  }
+  try {
+    const context = await apiRequest(contextResponseSchema, {
+      path: '/me/context',
+      method: 'POST',
+      body: { organizationId: me.lastOrganizationId, establishmentId: me.lastEstablishmentId },
+    });
+    if (!context.establishment) {
+      await forgetRememberedContext();
+      await appQueryClient.cancelQueries();
+      appQueryClient.clear();
+      return null;
+    }
+    return context;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      await forgetRememberedContext();
+      await appQueryClient.cancelQueries();
+      appQueryClient.clear();
+      return null;
+    }
+    throw error;
+  }
+}
+
 export function clearEstablishmentContext(): void {
+  void appQueryClient.cancelQueries();
   appQueryClient.clear();
   emit({ ...snapshot, context: null });
+}
+
+export function canManageCatalog(context: ContextResponse | null): boolean {
+  const roles = [context?.establishmentRole, context?.organizationRole];
+  return roles.some((role) => role === 'ADMIN' || role === 'MANAGER');
 }
 
 export function firstNameFrom(name: string | undefined): string {

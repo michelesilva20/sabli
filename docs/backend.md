@@ -119,7 +119,7 @@ cd apps/api
 
 No Windows: `mvnw.cmd -B verify`.
 
-Os testes cobrem identidade, catálogo, mesas, pedidos, comandas, caixa, isolamento multi-tenant, concorrência, Flyway até V6, OpenAPI e constraints do PostgreSQL.
+Os testes cobrem identidade, catálogo, mesas, pedidos, comandas, caixa, isolamento multi-tenant, concorrência, Flyway até V7, OpenAPI e constraints do PostgreSQL.
 
 ## Migrations
 
@@ -131,6 +131,7 @@ Arquivos em `apps/api/src/main/resources/db/migration/`, padrão Flyway `V{vers�
 - `V4` cria `dining_tables` e `table_services`.
 - `V5` cria pedidos, snapshots de itens e tickets de cozinha.
 - `V6` cria comandas, pagamentos informados pelo operador e sessões de caixa.
+- `V7` guarda o último estabelecimento da conta para restaurar o contexto após o refresh.
 
 Não há tabela de clientes. O Flyway aplica as migrations na subida da API e nos testes.
 

@@ -5,7 +5,7 @@ A API em `apps/api` autentica e persiste catálogo, mesas, pedidos/KDS, comandas
 | Modo | `VITE_SABLI_MODE` | Dados |
 | ---- | ----------------- | ----- |
 | DEMO | `demo` (padrão) | `SabliDataSource` + `demo/session.ts` |
-| API | `api` | Cliente HTTP + sessão em memória. Módulos operacionais ainda não ligados |
+| API | `api` | Cliente HTTP + sessão em memória. Catálogo ligado; demais módulos operacionais ainda não |
 
 `VITE_SABLI_API_BASE_URL` aponta para `http://127.0.0.1:8080` no desenvolvimento.
 
@@ -14,14 +14,17 @@ A API em `apps/api` autentica e persiste catálogo, mesas, pedidos/KDS, comandas
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh` (cookie HttpOnly, sem `refreshToken` no JSON)
 - `POST /api/v1/auth/logout`
-- `GET /api/v1/me`
-- `POST /api/v1/me/context`
+- `GET /api/v1/me` (`lastOrganizationId` / `lastEstablishmentId` como hint)
+- `POST /api/v1/me/context` (valida membership e lembra o último estabelecimento)
+- `DELETE /api/v1/me/context`
+- `GET/POST/PATCH /api/v1/establishments/{id}/catalog/**`
+- `POST /api/v1/establishments/{id}/catalog/pizza/quotes`
 
 Access token só em memória. Refresh só no cookie `sabli_refresh`. CORS com credenciais.
 
 ## Ainda não ligado
 
-Quando o modo API abre PDV, mesas, pedidos, cozinha, comandas, caixa, produtos, relatórios ou equipe, a tela declara que o módulo ainda não está disponível. Fixtures não aparecem como dados reais.
+Quando o modo API abre mesas, pedidos, cozinha, comandas, caixa, relatórios ou equipe, a tela declara que o módulo ainda não está disponível. Produtos e a consulta do PDV usam o catálogo real. Fixtures não aparecem como dados reais.
 
 O mapeamento operacional continua em [catalog-contracts.md](catalog-contracts.md), [dining-contracts.md](dining-contracts.md), [orders-contracts.md](orders-contracts.md) e [billing-contracts.md](billing-contracts.md).
 

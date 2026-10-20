@@ -8,10 +8,13 @@ import dev.emilabs.sabli.shared.security.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -34,10 +37,17 @@ public class MeController {
   }
 
   @PostMapping("/context")
-  @Operation(summary = "Valida o contexto de organização e estabelecimento do solicitante")
+  @Operation(summary = "Valida e lembra o contexto de organização e estabelecimento do solicitante")
   public ContextResponse context(@Valid @RequestBody ContextRequest request) {
     return ContextResponse.from(
-        queries.validateContext(
+        queries.selectContext(
             currentUser.requireUserId(), request.organizationId(), request.establishmentId()));
+  }
+
+  @DeleteMapping("/context")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(summary = "Esquece o último estabelecimento lembrado na conta")
+  public void forgetContext() {
+    queries.forgetContext(currentUser.requireUserId());
   }
 }

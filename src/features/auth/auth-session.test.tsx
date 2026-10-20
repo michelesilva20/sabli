@@ -28,10 +28,35 @@ import {
 } from '@/test/api-fixtures';
 
 function stubApi(
-  scenario: 'ok' | 'restore' | 'invalid' | 'down' | 'revoked' | 'suspended' | 'refresh-fail' | 'forbidden',
+  scenario:
+    | 'ok'
+    | 'restore'
+    | 'restore-context'
+    | 'restore-revoked'
+    | 'restore-suspended'
+    | 'invalid'
+    | 'down'
+    | 'revoked'
+    | 'suspended'
+    | 'refresh-fail'
+    | 'forbidden',
 ) {
-  let access = scenario === 'restore' ? 'access-ephemeral' : '';
-  let signedIn = scenario === 'restore';
+  let access = scenario.startsWith('restore') ? 'access-ephemeral' : '';
+  let signedIn = scenario.startsWith('restore');
+  let lastOrganizationId: string | undefined =
+    scenario === 'restore-context' || scenario === 'restore-revoked'
+      ? apiOrg.id
+      : scenario === 'restore-suspended'
+        ? apiOrg.id
+        : undefined;
+  let lastEstablishmentId: string | undefined =
+    scenario === 'restore-context'
+      ? apiEst.id
+      : scenario === 'restore-revoked'
+        ? apiEst.id
+        : scenario === 'restore-suspended'
+          ? apiEstSuspended.id
+          : undefined;
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url =
       typeof input === 'string'
@@ -69,10 +94,25 @@ function stubApi(
       if (auth !== `Bearer ${access}`) {
         return problem(401, 'UNAUTHENTICATED', 'Não autenticado', 'A solicitação exige autenticação.');
       }
-      if (scenario === 'revoked') {
-        return jsonResponse({ ...apiMe, establishments: [], establishmentMemberships: [] });
+      if (scenario === 'revoked' || scenario === 'restore-revoked') {
+        return jsonResponse({
+          ...apiMe,
+          establishments: scenario === 'revoked' ? [] : apiMe.establishments,
+          establishmentMemberships: scenario === 'revoked' ? [] : apiMe.establishmentMemberships,
+          lastOrganizationId,
+          lastEstablishmentId,
+        });
       }
-      return jsonResponse(apiMe);
+      return jsonResponse({
+        ...apiMe,
+        lastOrganizationId,
+        lastEstablishmentId,
+      });
+    }
+    if (method === 'DELETE' && path === '/api/v1/me/context') {
+      lastOrganizationId = undefined;
+      lastEstablishmentId = undefined;
+      return new Response(null, { status: 204 });
     }
     if (method === 'POST' && path === '/api/v1/me/context') {
       const body = JSON.parse(bodyText || '{}') as {
@@ -82,13 +122,19 @@ function stubApi(
       if (scenario === 'forbidden') {
         return problem(403, 'FORBIDDEN', 'Acesso negado', 'Você não pode executar esta ação.');
       }
-      if (body.establishmentId === apiEstSuspended.id) {
+      if (scenario === 'restore-suspended' || body.establishmentId === apiEstSuspended.id) {
         return problem(403, 'TENANT_SUSPENDED', 'Tenant suspenso', 'A organização ou o estabelecimento está suspenso.');
       }
-      if (scenario === 'revoked' || body.establishmentId !== apiEst.id && body.establishmentId !== apiEstBairro.id) {
+      if (
+        scenario === 'revoked' ||
+        scenario === 'restore-revoked' ||
+        (body.establishmentId !== apiEst.id && body.establishmentId !== apiEstBairro.id)
+      ) {
         return problem(404, 'NOT_FOUND', 'Não encontrado', 'O recurso não foi encontrado.');
       }
       const establishment = body.establishmentId === apiEstBairro.id ? apiEstBairro : apiEst;
+      lastOrganizationId = body.organizationId;
+      lastEstablishmentId = body.establishmentId;
       return jsonResponse({
         ...apiContext,
         establishment,
@@ -173,6 +219,37 @@ describe('sessão API', () => {
     expect(getAuthSnapshot().me?.user.email).toBe('ana@example.com');
   });
 
+  it('restaura o estabelecimento autorizado após o refresh', async () => {
+    useApi();
+    stubApi('restore-context');
+    await bootstrapSession();
+    expect(getAuthSnapshot().context?.establishment?.id).toBe(apiEst.id);
+    expect(getAuthSnapshot().context?.establishment?.name).toBe('Loja Centro');
+    renderApp('/inicio');
+    expect(await screen.findByRole('heading', { name: 'Início' })).toBeInTheDocument();
+    expect(screen.getAllByText(/loja centro/i).length).toBeGreaterThan(0);
+  });
+
+  it('invalida o contexto quando a membership foi revogada na restauração', async () => {
+    useApi();
+    stubApi('restore-revoked');
+    await bootstrapSession();
+    expect(getAuthSnapshot().status).toBe('authenticated');
+    expect(getAuthSnapshot().context).toBeNull();
+    renderApp('/inicio');
+    expect(await screen.findByRole('heading', { name: 'Onde você vai operar?' })).toBeInTheDocument();
+  });
+
+  it('invalida o contexto quando o tenant está suspenso na restauração', async () => {
+    useApi();
+    stubApi('restore-suspended');
+    await bootstrapSession();
+    expect(getAuthSnapshot().status).toBe('authenticated');
+    expect(getAuthSnapshot().context).toBeNull();
+    expect(isApiMode()).toBe(true);
+    expect(isDemoMode()).toBe(false);
+  });
+
   it('trata falha de refresh como sessão expirada', async () => {
     useApi();
     stubApi('refresh-fail');
@@ -247,13 +324,15 @@ describe('modo DEMO', () => {
 });
 
 describe('módulo operacional no modo API', () => {
-  it('não apresenta fixtures do PDV', async () => {
+  it('não envia pedido fictício no PDV', async () => {
     useApi();
     stubApi('ok');
     await login('ana@example.com', 'password10');
     await selectEstablishment(apiOrg.id, apiEst.id);
     renderApp('/pdv');
-    expect(await screen.findByText(/ainda não disponível no modo api/i)).toBeInTheDocument();
+    expect(await screen.findByText(/envio de pedido bloqueado/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Enviar para cozinha' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Adicionar Calabresa' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/mariana/i)).not.toBeInTheDocument();
   });
 });

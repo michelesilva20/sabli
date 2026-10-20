@@ -46,6 +46,12 @@ public class UserAccount {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "last_organization_id")
+  private UUID lastOrganizationId;
+
+  @Column(name = "last_establishment_id")
+  private UUID lastEstablishmentId;
+
   public static UserAccount create(String email, String emailNormalized, String passwordHash, String name) {
     UserAccount user = new UserAccount();
     user.id = UUID.randomUUID();
@@ -116,5 +122,23 @@ public class UserAccount {
 
   public void deactivate() {
     status = AccountStatus.INACTIVE;
+  }
+
+  public UUID lastOrganizationId() {
+    return lastOrganizationId;
+  }
+
+  public UUID lastEstablishmentId() {
+    return lastEstablishmentId;
+  }
+
+  public void rememberContext(UUID organizationId, UUID establishmentId) {
+    this.lastOrganizationId = organizationId;
+    this.lastEstablishmentId = establishmentId;
+  }
+
+  public void forgetContext() {
+    lastOrganizationId = null;
+    lastEstablishmentId = null;
   }
 }

@@ -1,6 +1,6 @@
 # Contratos de catálogo (Java ↔ TypeScript)
 
-O SPA ainda usa fixtures em `SabliDataSource`. Esta tabela documenta o mapeamento para a integração posterior. Não substitua o data source neste checkpoint.
+O modo DEMO continua em `SabliDataSource`. O modo API lê e escreve o catálogo em `/api/v1/establishments/{id}/catalog`, com adapters em `src/shared/api/catalog.ts`.
 
 Preços em **centavos inteiros**. O servidor é a autoridade; o cliente não envia o total cobrado.
 

@@ -11,7 +11,7 @@ import { Input } from '@/design-system/components/input';
 import { ThemeSwitcher } from '@/design-system/components/theme-switcher';
 import { SabliLogo } from '@/design-system/icons/logo';
 import { ApiError, ApiUnavailableError } from '@/shared/api/http-client';
-import { login, useAuthSession } from '@/shared/auth/session';
+import { getAuthSnapshot, login, useAuthSession } from '@/shared/auth/session';
 
 const schema = z.object({
   email: z.string().trim().email('Informe um e-mail válido.'),
@@ -82,12 +82,9 @@ export function LoginPage() {
                 if (submitting) return;
                 setSubmitting(true);
                 try {
-                  const me = await login(values.email, values.password);
-                  if (me.establishments.length === 1) {
-                    navigate('/selecionar-estabelecimento', { replace: true });
-                    return;
-                  }
-                  navigate('/selecionar-estabelecimento', { replace: true });
+                  await login(values.email, values.password);
+                  const restored = getAuthSnapshot().context?.establishment;
+                  navigate(restored ? '/inicio' : '/selecionar-estabelecimento', { replace: true });
                 } catch (error) {
                   const message =
                     error instanceof ApiUnavailableError

@@ -240,6 +240,94 @@ class IdentityIsolationTests extends IdentitySupport {
   }
 
   @Test
+  void selectingContextRemembersLastWorkplaceOnMe() throws Exception {
+    Tenant tenant = registerTenant("remember");
+    mockMvc
+        .perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lastEstablishmentId").doesNotExist());
+    mockMvc
+        .perform(
+            post("/api/v1/me/context")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"organizationId\":\"%s\",\"establishmentId\":\"%s\"}"
+                        .formatted(tenant.organizationId(), tenant.establishmentId())))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lastOrganizationId").value(tenant.organizationId().toString()))
+        .andExpect(jsonPath("$.lastEstablishmentId").value(tenant.establishmentId().toString()));
+    mockMvc
+        .perform(
+            delete("/api/v1/me/context").header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+        .andExpect(status().isNoContent());
+    mockMvc
+        .perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lastEstablishmentId").doesNotExist());
+  }
+
+  @Test
+  void rememberedContextIsRejectedWhenMembershipIsRevoked() throws Exception {
+    Tenant tenant = registerTenant("revctx");
+    mockMvc
+        .perform(
+            post("/api/v1/me/context")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"organizationId\":\"%s\",\"establishmentId\":\"%s\"}"
+                        .formatted(tenant.organizationId(), tenant.establishmentId())))
+        .andExpect(status().isOk());
+    jdbcTemplate.update(
+        "update establishment_memberships set status = 'REVOKED' where user_id = ? and establishment_id = ?",
+        tenant.userId(),
+        tenant.establishmentId());
+    jdbcTemplate.update(
+        "update organization_memberships set status = 'REVOKED' where user_id = ? and organization_id = ?",
+        tenant.userId(),
+        tenant.organizationId());
+    mockMvc
+        .perform(
+            post("/api/v1/me/context")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"organizationId\":\"%s\",\"establishmentId\":\"%s\"}"
+                        .formatted(tenant.organizationId(), tenant.establishmentId())))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void rememberedContextIsRejectedWhenTenantIsSuspended() throws Exception {
+    Tenant tenant = registerTenant("susctx");
+    mockMvc
+        .perform(
+            post("/api/v1/me/context")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"organizationId\":\"%s\",\"establishmentId\":\"%s\"}"
+                        .formatted(tenant.organizationId(), tenant.establishmentId())))
+        .andExpect(status().isOk());
+    jdbcTemplate.update(
+        "update establishments set status = 'SUSPENDED' where id = ?", tenant.establishmentId());
+    mockMvc
+        .perform(
+            post("/api/v1/me/context")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tenant.accessToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"organizationId\":\"%s\",\"establishmentId\":\"%s\"}"
+                        .formatted(tenant.organizationId(), tenant.establishmentId())))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("TENANT_SUSPENDED"));
+  }
+
+  @Test
   void contextValidationRejectsCrossOrganizationEstablishment() throws Exception {
     Tenant alpha = registerTenant("ctxa");
     Tenant beta = registerTenant("ctxb");
