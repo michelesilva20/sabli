@@ -15,11 +15,12 @@
   <artifactId>sabli-api</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <name>Sabli API</name>
-  <description>Fundação do backend Sabli. Sem operações de negócio neste checkpoint.</description>
+  <description>API Sabli: identidade, organizações, estabelecimentos e isolamento multi-tenant.</description>
 
   <properties>
     <java.version>25</java.version>
     <springdoc.version>3.1.1</springdoc.version>
+    <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
   </properties>
 
   <dependencies>
@@ -30,6 +31,11 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>${nimbus-jose-jwt.version}</version>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
