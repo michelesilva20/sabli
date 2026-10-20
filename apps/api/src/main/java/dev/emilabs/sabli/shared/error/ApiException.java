@@ -60,4 +60,16 @@ public class ApiException extends RuntimeException {
   public static ApiException badRequest(String detail) {
     return new ApiException(HttpStatus.BAD_REQUEST, "Solicitação inválida", "BAD_REQUEST", detail);
   }
+
+  public static ApiException unprocessable(String code, String detail) {
+    return new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "Não processável", code, detail);
+  }
+
+  public static ApiException staleVersion() {
+    return new ApiException(
+        HttpStatus.CONFLICT,
+        "Versão desatualizada",
+        "STALE_VERSION",
+        "O registro foi alterado por outra operação. Recarregue e tente de novo.");
+  }
 }

@@ -72,6 +72,13 @@ public class TenantAuthorizer {
     return access;
   }
 
+  public EstAccess requireOperationalEstablishment(UUID userId, UUID establishmentId) {
+    EstAccess access = requireVisibleEstablishment(userId, establishmentId);
+    requireOrgOperational(access.organization());
+    requireEstablishmentOperational(access.establishment());
+    return access;
+  }
+
   public EstAccess requireVisibleEstablishment(UUID userId, UUID establishmentId) {
     Establishment establishment = establishments.findById(establishmentId).orElseThrow(ApiException::notFound);
     OrgAccess orgAccess = requireVisibleOrganization(userId, establishment.organizationId());
