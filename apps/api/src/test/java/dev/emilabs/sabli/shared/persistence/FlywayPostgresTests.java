@@ -21,7 +21,7 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
 
   @Test
   void appliesCatalogMigrationAgainstPostgres() {
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
     assertThat(
             jdbcTemplate.queryForObject(
                 "select extname from pg_extension where extname = 'pgcrypto'", String.class))
@@ -37,17 +37,19 @@ class FlywayPostgresTests extends AbstractIntegrationTest {
                     'organization_memberships', 'establishment_memberships', 'refresh_sessions',
                     'catalog_categories', 'catalog_products', 'catalog_product_variants',
                     'pizza_settings', 'pizza_sizes', 'pizza_flavors', 'pizza_flavor_prices',
-                    'pizza_crusts', 'pizza_extras', 'dining_tables', 'table_services')
+                    'pizza_crusts', 'pizza_extras', 'dining_tables', 'table_services',
+                    'order_counters', 'orders', 'order_items', 'order_item_pizza_flavors',
+                    'order_item_modifiers', 'kitchen_tickets', 'kitchen_ticket_items')
                 """,
                 Integer.class))
-        .isEqualTo(17);
+        .isEqualTo(24);
     assertThat(
             jdbcTemplate.queryForObject(
                 """
                 select count(*)
                 from information_schema.tables
                 where table_schema = 'public'
-                  and table_name in ('orders', 'payments', 'customers')
+                  and table_name in ('payments', 'customers')
                 """,
                 Integer.class))
         .isZero();

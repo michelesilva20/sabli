@@ -1,6 +1,6 @@
 # Backend Sabli
 
-API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade, catálogo e mesas/atendimentos estão persistidos. Pedidos, KDS e caixa ainda não existem no backend.
+API Java da plataforma. O frontend React em `src/` continua autônomo: fixtures, sessão demonstrativa e nenhum login visual. Identidade, catálogo, mesas e pedidos/KDS estão persistidos. Caixa e pagamentos ainda não existem no backend.
 
 ## Requisitos
 
@@ -128,6 +128,7 @@ Arquivos em `apps/api/src/main/resources/db/migration/`, padrão Flyway `V{vers�
 - `V2` cria `users`, `organizations`, `establishments`, `organization_memberships`, `establishment_memberships` e `refresh_sessions`.
 - `V3` cria o catálogo e a precificação de pizza.
 - `V4` cria `dining_tables` e `table_services`.
+- `V5` cria pedidos, snapshots de itens e tickets de cozinha.
 
 Tabelas de pedidos, pagamentos e clientes ficam para os próximos checkpoints. O Flyway aplica as migrations na subida da API e nos testes.
 
@@ -178,9 +179,22 @@ Cadastro da mesa e atendimento ativo são entidades distintas. A ocupação do m
 
 `ADMIN`/`MANAGER` administram o cadastro. `WAITER` e `CASHIER` abrem atendimento e pedem conta. `KITCHEN` só lê.
 
+## Pedidos e KDS
+
+Confirmação congela nomes, composição e preços. Idempotência por `Idempotency-Key` no estabelecimento e no usuário. Mapeamento TS: [orders-contracts.md](orders-contracts.md).
+
+| Recurso | Caminho |
+| --- | --- |
+| Pedidos | `POST/GET /api/v1/establishments/{id}/orders` |
+| Detalhe | `GET /orders/{orderId}` |
+| Fila da cozinha | `GET /kitchen/tickets` |
+| Avanço | `POST /kitchen/tickets/{id}/advance` e `.../items/{itemId}/advance` |
+
+Desconto promocional do SPA não entra no total. Encerramento da mesa continua `409 CLOSE_REQUIRES_SETTLEMENT`.
+
 ## Limites deste checkpoint
 
-- Sem pedidos, KDS, caixa ou faturamento. Encerramento de mesa sem quitação permanece bloqueado.
+- Sem caixa, pagamentos ou faturamento. Encerramento de mesa sem quitação permanece bloqueado.
 - Sem MFA.
 - Sem integração React → API. `SabliDataSource` e a sessão demonstrativa permanecem.
 - Actuator expõe só `health`, sem detalhes.
