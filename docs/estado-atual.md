@@ -1,6 +1,6 @@
 # Estado atual do Sabli
 
-Este documento descreve o ponto atual para continuar o trabalho. Não substitui as outras referências: [desenvolvimento local](desenvolvimento-local.md), [arquitetura](arquitetura.md), [design system](design-system.md), [frontend](frontend-architecture.md), [telas](screens.md), [contratos API](future-api-integration.md) e [backend](backend.md).
+Este documento descreve o ponto atual para continuar o trabalho. Visão geral: [handbook](projeto.md). Não substitui [desenvolvimento local](desenvolvimento-local.md), [arquitetura](arquitetura.md), [design system](design-system.md), [frontend](frontend-architecture.md), [telas](screens.md), [contratos API](future-api-integration.md) e [backend](backend.md).
 
 ## Em uma frase
 
@@ -84,7 +84,7 @@ Estabelecimento de exemplo no DEMO: Pizzaria do Centro. Operadora: Mariana Alves
 
 ## Git e entrega
 
-Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A linha de produto está empilhada e linear até `fix/empty-service-close` (`7b87022`, PR #19, CI verde). DX e setup local seguem em `chore/local-dev`. Plano de merge, dependências e a PR #17 (handbook, fora da linha): [consolidação Git](git-consolidacao.md). **Não mergear `main` sem aprovação humana.**
+A `main` consolidada está em `6bbc89f` (merges `#7`–`#16` e `#18`–`#20`). A PR #17 antiga ficou de fora: o handbook dela descrevia comandas e caixa React desligados. Histórico: [consolidação Git](git-consolidacao.md).
 
 ## Como rodar
 
@@ -125,7 +125,7 @@ DEMO sem API: `npm run dev` → `http://127.0.0.1:5173/`. Node 22+ e npm 11+. JD
 
 ## Como continuar
 
-O ciclo operacional persistente está na ponta `fix/empty-service-close`. A consolidação na `main` espera aprovação humana (ordem em [git-consolidacao](git-consolidacao.md)). Não iniciar Relatórios nem Equipe automaticamente. Não há hospedagem neste checkpoint.
+O ciclo operacional persistente está na `main`. Não iniciar Relatórios, Equipe nem o atendimento API automaticamente. Não há hospedagem neste checkpoint.
 
 ## Referência visual
 

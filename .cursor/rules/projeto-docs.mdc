@@ -1,0 +1,21 @@
+---
+description: Manter docs/projeto.md alinhado ao produto na mesma entrega
+alwaysApply: true
+---
+
+# Handbook do projeto
+
+`docs/projeto.md` é a visão geral do Sabli. Depois de uma entrega que mude tela, modo DEMO/API, módulo ligado, invariante, setup ou limite, atualize o handbook na mesma branch.
+
+## Como atualizar
+
+1. Altere só as seções tocadas. Não copie contratos nem o guia local.
+2. A tabela de telas e a lista `apiReady` em `src/app/layouts/module-gate.tsx` precisam coincidir.
+3. Data no topo: dia da entrega. Não invente módulo, rota, hospedagem ou cliente.
+4. README e `docs/estado-atual.md` continuam documentos próprios. Aponte para o handbook; não os esvazie.
+
+## O que não fazer
+
+- Não afirmar que o Sabli está em produção, homologado ou hospedado.
+- Não descrever fallback silencioso de API → DEMO.
+- Não declarar Relatórios, Equipe ou atendimento API como prontos.

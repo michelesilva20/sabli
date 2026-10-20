@@ -54,6 +54,7 @@ Os modos não se misturam. Falha HTTP no modo API permanece erro.
 
 ## Onde ler mais
 
+- Visão geral: [handbook](projeto.md)
 - Contratos: [catálogo](catalog-contracts.md), [mesas](dining-contracts.md), [pedidos](orders-contracts.md), [comandas e caixa](billing-contracts.md)
 - API: [backend](backend.md)
 - Frontend: [frontend-architecture](frontend-architecture.md)
