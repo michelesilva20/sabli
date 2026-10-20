@@ -11,6 +11,7 @@ import { ApiError, ApiUnavailableError, apiRequest, registerAccessRefresh } from
 import { appQueryClient } from '@/shared/api/query-client';
 import { isApiMode } from '@/shared/config/runtime';
 import { readAccessToken, writeAccessToken } from '@/shared/auth/token-memory';
+import { resetPaymentAttempts } from '@/shared/billing/payment-attempt';
 import { resetOrderDraft } from '@/shared/orders/order-draft';
 
 export type AuthStatus = 'boot' | 'restoring' | 'anonymous' | 'authenticated' | 'expired';
@@ -191,6 +192,7 @@ export async function logout(): Promise<void> {
   } finally {
     writeAccessToken(null);
     resetOrderDraft();
+    resetPaymentAttempts();
     appQueryClient.clear();
     emit({ ...initialSnapshot(), status: 'anonymous' });
   }
@@ -211,6 +213,7 @@ export async function selectEstablishment(
     }
     await appQueryClient.cancelQueries();
     appQueryClient.clear();
+    resetPaymentAttempts();
     emit({
       ...snapshot,
       context,
@@ -309,6 +312,19 @@ export function canPlaceOrder(context: ContextResponse | null): boolean {
 export function canAdvanceKitchen(context: ContextResponse | null): boolean {
   if (canManageDining(context)) return true;
   return context?.establishmentRole === 'KITCHEN';
+}
+
+export function canReadBill(context: ContextResponse | null): boolean {
+  return canOperateDining(context);
+}
+
+export function canFinance(context: ContextResponse | null): boolean {
+  if (canManageDining(context)) return true;
+  return context?.establishmentRole === 'CASHIER';
+}
+
+export function canCloseSettledTable(context: ContextResponse | null): boolean {
+  return canOperateDining(context);
 }
 
 export function firstNameFrom(name: string | undefined): string {

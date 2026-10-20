@@ -141,6 +141,34 @@ async function mockDiningApi(page: Page) {
       });
       return;
     }
+    if (method === 'GET' && url.includes(`/table-services/${serviceId}/bill`)) {
+      const occupied = Boolean(table.service);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'e1e1e1e1-e1e1-41e1-81e1-e1e1e1e1e1e1',
+          establishmentId: estId,
+          kind: 'TABLE',
+          tableId,
+          tableNumber: 1,
+          tableServiceId: serviceId,
+          orderId: null,
+          subtotalCents: occupied ? 0 : 0,
+          discountCents: 0,
+          totalCents: 0,
+          paidCents: 0,
+          remainingCents: 0,
+          status: 'SETTLED',
+          settled: true,
+          settledAt: '2026-10-19T12:10:00Z',
+          version: 0,
+          orders: [],
+          payments: [],
+        }),
+      });
+      return;
+    }
     if (method === 'GET' && url.includes(`/establishments/${estId}/table-services`)) {
       await route.fulfill({
         status: 200,
@@ -235,7 +263,8 @@ test('abre mesa, pede conta e reabre o atendimento no modo API', async ({ page }
   await page.getByRole('link', { name: 'Mesas' }).click();
   await expect(page.getByRole('heading', { name: 'Mapa de mesas' })).toBeVisible();
   await expect(page.getByRole('button', { name: /mesa 01, disponível/i })).toBeVisible();
-  await expect(page.getByText(/consumo ainda não conectado/i)).toBeVisible();
+  await expect(page.getByText(/em atendimento/i)).toBeVisible();
+  await expect(page.getByText(/consumo ainda não conectado/i)).toHaveCount(0);
   await expect(page.getByText(/mariana/i)).toHaveCount(0);
   await page.getByRole('button', { name: /mesa 01, disponível/i }).click();
   const sheet = page.getByRole('dialog', { name: /mesa 01/i });
@@ -249,7 +278,7 @@ test('abre mesa, pede conta e reabre o atendimento no modo API', async ({ page }
   await sheet.getByRole('button', { name: 'Reabrir atendimento' }).click();
   await page.getByRole('button', { name: 'Confirmar reabertura' }).click();
   await expect(sheet.getByText('Há um atendimento aberto nesta mesa.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Encerrar atendimento' })).toHaveCount(0);
+  await expect(sheet.getByRole('button', { name: 'Encerrar atendimento' })).toBeVisible();
   await sheet.getByRole('button', { name: 'Fechar' }).click();
   await expect(page.getByRole('button', { name: /mesa 01, ocupada/i })).toBeVisible();
   await page.screenshot({ path: 'docs/screenshots/mesas-api.png', fullPage: true });

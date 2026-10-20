@@ -26,6 +26,7 @@ import {
   centroReserved,
   makeService,
   makeTable,
+  serviceOpenId,
   tableAvailableId,
   tableOccupiedId,
   tableReservedId,
@@ -94,6 +95,57 @@ function stubDining(role: Role = 'ADMIN', scenario: 'ok' | 'suspended' | 'stale'
     const bucket = stores.get(establishmentId) ?? [];
     const canManage = role === 'ADMIN';
     const canOperate = role === 'ADMIN' || role === 'WAITER';
+    if (resource === 'table-services' && method === 'GET' && rest.endsWith('/bill')) {
+      const serviceId = rest.split('/')[0];
+      const owner = bucket.find((item) => item.activeService?.id === serviceId);
+      if (!owner?.activeService) return problem(404, 'NOT_FOUND', 'Não encontrado', 'Conta ausente.');
+      const occupied = serviceId === serviceOpenId;
+      return jsonResponse({
+        id: occupied ? 'e1e1e1e1-e1e1-41e1-81e1-e1e1e1e1e1e1' : 'e6e6e6e6-e6e6-46e6-86e6-e6e6e6e6e6e6',
+        establishmentId,
+        kind: 'TABLE',
+        tableId: owner.id,
+        tableNumber: owner.number,
+        tableServiceId: serviceId,
+        orderId: null,
+        subtotalCents: occupied ? 800 : 0,
+        discountCents: 0,
+        totalCents: occupied ? 800 : 0,
+        paidCents: 0,
+        remainingCents: occupied ? 800 : 0,
+        status: occupied ? 'OPEN' : 'SETTLED',
+        settled: !occupied,
+        settledAt: occupied ? null : '2026-10-20T12:00:00Z',
+        version: 0,
+        orders: occupied
+          ? [
+              {
+                id: 'a1a1a1a1-a1a1-41a1-81a1-a1a1a1a1a1a1',
+                number: 12,
+                subtotalCents: 800,
+                discountCents: 0,
+                totalCents: 800,
+                placedAt: '2026-10-19T12:20:00Z',
+                items: [
+                  {
+                    id: 'b1b1b1b1-b1b1-41b1-81b1-b1b1b1b1b1b1',
+                    kind: 'STANDARD',
+                    productId: '88888888-8888-4888-8888-888888888888',
+                    productName: 'Refrigerante',
+                    quantity: 1,
+                    unitPriceCents: 800,
+                    lineTotalCents: 800,
+                    productionStatus: 'WAITING',
+                    ticketItemId: 'd1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1',
+                    ticketItemVersion: 0,
+                  },
+                ],
+              },
+            ]
+          : [],
+        payments: [],
+      });
+    }
     if (resource === 'table-services' && method === 'GET') {
       const items = [...history.values()].flat().filter((item) => item.establishmentId === establishmentId);
       return jsonResponse({ items, page: 0, size: 20, total: items.length });
@@ -181,6 +233,22 @@ function stubDining(role: Role = 'ADMIN', scenario: 'ok' | 'suspended' | 'stale'
       history.set(table.id, [billed, ...(history.get(table.id) ?? []).filter((item) => item.id !== billed.id)]);
       return jsonResponse(billed);
     }
+    if (tail[0] === 'service' && tail[1] === 'close' && method === 'POST') {
+      if (!canOperate) return problem(403, 'FORBIDDEN', 'Acesso negado', 'Você não pode executar esta ação.');
+      if (table.activeService?.id === serviceOpenId) {
+        return problem(
+          409,
+          'CLOSE_REQUIRES_SETTLEMENT',
+          'Conta em aberto',
+          'O atendimento só pode ser encerrado com a conta quitada.',
+        );
+      }
+      const closed = table.activeService
+        ? { ...table.activeService, status: 'CLOSED' as const, closedAt: '2026-10-20T13:00:00Z' }
+        : null;
+      writeTable({ ...table, activeService: null });
+      return jsonResponse(closed);
+    }
     if (tail[0] === 'service' && tail[1] === 'reopen' && method === 'POST') {
       if (!canOperate) return problem(403, 'FORBIDDEN', 'Acesso negado', 'Você não pode executar esta ação.');
       if (!table.activeService || table.activeService.status !== 'AWAITING_BILL') {
@@ -259,7 +327,8 @@ describe('mesas API', () => {
     expect(await screen.findByRole('button', { name: /mesa 01, disponível/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /mesa 02, ocupada/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /mesa 03, reservada/i })).toBeInTheDocument();
-    expect(screen.getByText(/consumo ainda não conectado/i)).toBeInTheDocument();
+    expect(screen.getByText(/em atendimento/i)).toBeInTheDocument();
+    expect(screen.queryByText(/consumo ainda não conectado/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/mariana/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nova mesa' })).toBeInTheDocument();
   });
@@ -274,14 +343,14 @@ describe('mesas API', () => {
     expect(await screen.findByText(/atendimento aberto na mesa 01/i)).toBeInTheDocument();
     expect(await within(sheet).findByText('Ana Costa')).toBeInTheDocument();
     expect(within(sheet).getByText('Há um atendimento aberto nesta mesa.')).toBeInTheDocument();
-    expect(within(sheet).queryByText(/r\$/i)).not.toBeInTheDocument();
+    expect(await within(sheet).findByText(/quitado/i)).toBeInTheDocument();
     await user.click(within(sheet).getByRole('button', { name: 'Pedir conta' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar pedido de conta' }));
     expect(await within(sheet).findByText(/a mesa continua ocupada até a quitação/i)).toBeInTheDocument();
     await user.click(within(sheet).getByRole('button', { name: 'Reabrir atendimento' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar reabertura' }));
     expect(await within(sheet).findByText('Há um atendimento aberto nesta mesa.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Encerrar atendimento' })).not.toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Encerrar atendimento' })).toBeInTheDocument();
   });
 
   it('exige confirmação para mesa reservada e recusa dupla abertura', async () => {
@@ -401,8 +470,9 @@ describe('cliente de mesas', () => {
     renderApp('/mesas');
     await userEvent.setup().click(await screen.findByRole('button', { name: /mesa 02, ocupada/i }));
     const sheet = await screen.findByRole('dialog', { name: /mesa 02/i });
-    expect(within(sheet).getByText(/comanda ainda não conectada/i)).toBeInTheDocument();
-    expect(within(sheet).queryByText(/conta parcial/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/r\$ 0,00/i)).not.toBeInTheDocument();
+    expect(await within(sheet).findByText(/pendente/i)).toBeInTheDocument();
+    expect(within(sheet).getByText(/r\$ 8,00/i)).toBeInTheDocument();
+    expect(within(sheet).getByText(/desconto persistido r\$ 0,00/i)).toBeInTheDocument();
+    expect(screen.queryByText(/saldo demonstrativo/i)).not.toBeInTheDocument();
   });
 });

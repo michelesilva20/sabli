@@ -74,7 +74,13 @@ export function usePlaceOrderMutation() {
   return useMutation({
     mutationFn: (input: { body: PlaceOrderBody; idempotencyKey: string }) =>
       placeOrder(establishmentId!, input.body, input.idempotencyKey),
-    onSuccess: () => establishmentId && invalidateOrders(establishmentId),
+    onSuccess: () => {
+      if (!establishmentId) return;
+      return Promise.all([
+        invalidateOrders(establishmentId),
+        appQueryClient.invalidateQueries({ queryKey: ['billing', establishmentId] }),
+      ]);
+    },
   });
 }
 

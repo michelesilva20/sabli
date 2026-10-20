@@ -2,6 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   changeTableAvailability,
   changeTableStatus,
+  closeService,
   createTable,
   getTable,
   listEstablishmentServices,
@@ -35,6 +36,13 @@ function useEstablishmentId() {
 
 export function invalidateDining(establishmentId: string) {
   return appQueryClient.invalidateQueries({ queryKey: diningKeys(establishmentId).all });
+}
+
+function invalidateDiningAndBilling(establishmentId: string) {
+  return Promise.all([
+    invalidateDining(establishmentId),
+    appQueryClient.invalidateQueries({ queryKey: ['billing', establishmentId] }),
+  ]);
 }
 
 export function useDiningTablesQuery(includeInactive = false) {
@@ -78,7 +86,7 @@ export function useOpenServiceMutation() {
   return useMutation({
     mutationFn: (input: { tableId: string; guests: number }) =>
       openService(establishmentId!, input.tableId, input.guests),
-    onSuccess: () => establishmentId && invalidateDining(establishmentId),
+    onSuccess: () => establishmentId && invalidateDiningAndBilling(establishmentId),
   });
 }
 
@@ -86,7 +94,7 @@ export function useRequestBillMutation() {
   const establishmentId = useEstablishmentId();
   return useMutation({
     mutationFn: (tableId: string) => requestBill(establishmentId!, tableId),
-    onSuccess: () => establishmentId && invalidateDining(establishmentId),
+    onSuccess: () => establishmentId && invalidateDiningAndBilling(establishmentId),
   });
 }
 
@@ -94,7 +102,15 @@ export function useReopenServiceMutation() {
   const establishmentId = useEstablishmentId();
   return useMutation({
     mutationFn: (tableId: string) => reopenService(establishmentId!, tableId),
-    onSuccess: () => establishmentId && invalidateDining(establishmentId),
+    onSuccess: () => establishmentId && invalidateDiningAndBilling(establishmentId),
+  });
+}
+
+export function useCloseServiceMutation() {
+  const establishmentId = useEstablishmentId();
+  return useMutation({
+    mutationFn: (tableId: string) => closeService(establishmentId!, tableId),
+    onSuccess: () => establishmentId && invalidateDiningAndBilling(establishmentId),
   });
 }
 

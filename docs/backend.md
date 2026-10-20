@@ -214,7 +214,7 @@ Totais vêm dos pedidos congelados. Pagamentos PIX/cartão são manuais. Uma ses
 
 - Sem adquirente, TEF, fiscal ou estorno. PIX e cartão são declaração do operador.
 - Sem MFA.
-- O SPA no modo `api` autentica, escolhe estabelecimento, lê o catálogo e opera mesas/atendimentos. Pedidos, KDS, comandas e caixa ainda não estão ligados no React.
+- O SPA no modo `api` autentica, escolhe estabelecimento e opera catálogo, mesas, pedidos, KDS, comandas e caixa. Relatórios e equipe ainda não estão ligados.
 - Actuator expõe só `health`, sem detalhes.
 - OpenAPI está no classpath, desligado por padrão e protegido por autenticação.
 - Micrometer/Prometheus não está exposto.

@@ -10,10 +10,14 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'desktop', testIgnore: /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts|orders\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'desktop',
+      testIgnore: /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts|orders\.spec\.ts|billing\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
     {
       name: 'auth',
-      testMatch: /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts|orders\.spec\.ts/,
+      testMatch: /auth\.spec\.ts|catalog\.spec\.ts|dining\.spec\.ts|orders\.spec\.ts|billing\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4174' },
     },
   ],

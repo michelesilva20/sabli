@@ -5,7 +5,7 @@ A API em `apps/api` autentica e persiste catálogo, mesas, pedidos/KDS, comandas
 | Modo | `VITE_SABLI_MODE` | Dados |
 | ---- | ----------------- | ----- |
 | DEMO | `demo` (padrão) | `SabliDataSource` + `demo/session.ts` |
-| API | `api` | Cliente HTTP + sessão em memória. Catálogo, mesas, pedidos e KDS ligados; caixa ainda não |
+| API | `api` | Cliente HTTP + sessão em memória. Catálogo, mesas, pedidos, KDS, comandas e caixa ligados |
 
 `VITE_SABLI_API_BASE_URL` aponta para `http://127.0.0.1:8080` no desenvolvimento.
 
@@ -20,14 +20,20 @@ A API em `apps/api` autentica e persiste catálogo, mesas, pedidos/KDS, comandas
 - `GET/POST/PATCH /api/v1/establishments/{id}/catalog/**`
 - `POST /api/v1/establishments/{id}/catalog/pizza/quotes`
 - `GET/POST/PATCH /api/v1/establishments/{id}/tables/**`
-- `POST /api/v1/establishments/{id}/tables/{id}/service`, `/bill` e `/reopen`
+- `POST /api/v1/establishments/{id}/tables/{id}/service`, `/bill`, `/reopen` e `/close`
 - `GET /api/v1/establishments/{id}/table-services`
+- `GET /api/v1/establishments/{id}/table-services/{id}/bill`
+- `GET /api/v1/establishments/{id}/orders/{id}/bill`
+- `GET /api/v1/establishments/{id}/bills/{id}` e `/payments`
+- `POST /api/v1/establishments/{id}/bills/{id}/payments` (`Idempotency-Key`)
+- `POST/GET /api/v1/establishments/{id}/cash/sessions` e `/current`
+- `POST /api/v1/establishments/{id}/cash/sessions/{id}/movements` e `/close`
 
 Access token só em memória. Refresh só no cookie `sabli_refresh`. CORS com credenciais.
 
 ## Ainda não ligado
 
-Quando o modo API abre comandas, caixa, relatórios ou equipe, a tela declara que o módulo ainda não está disponível. Produtos, PDV, pedidos, cozinha e o mapa de mesas usam o backend. Fixtures não aparecem como dados reais. Encerrar atendimento e consumo da comanda continuam fora desta etapa.
+Quando o modo API abre relatórios ou equipe, a tela declara que o módulo ainda não está disponível. Produtos, PDV, pedidos, cozinha, comandas, caixa e o mapa de mesas usam o backend. Fixtures não aparecem como dados reais. Pagamentos PIX/cartão são declaração manual.
 
 Pedidos ligados:
 

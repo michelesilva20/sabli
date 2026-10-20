@@ -14,7 +14,7 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 - Três superfícies: painel administrativo (`BusinessLayout`), cozinha (`/cozinha`) e atendimento do garçom (`/atendimento`).
 - Modo definido por `VITE_SABLI_MODE` (`demo` ou `api`), validado na subida. Erro HTTP **não** volta ao DEMO.
 - DEMO: leituras em `SabliDataSource`, escritas em `src/shared/demo/session.ts`. Sem API, sem PostgreSQL.
-- API: cliente HTTP central (`src/shared/api/http-client.ts`), access token só em memória, refresh no cookie HttpOnly, rotas `/entrar` e `/selecionar-estabelecimento`. Catálogo, mesas, pedidos e KDS já consomem o PostgreSQL.
+- API: cliente HTTP central (`src/shared/api/http-client.ts`), access token só em memória, refresh no cookie HttpOnly, rotas `/entrar` e `/selecionar-estabelecimento`. Catálogo, mesas, pedidos, KDS, comandas e caixa já consomem o PostgreSQL.
 - Dinheiro entra e sai em centavos inteiros. A tela formata com `formatBRL`.
 - Tema claro, escuro ou sistema em `localStorage` (`sabli-theme`).
 - Preferências de interface (sidebar, estabelecimento DEMO, módulos visíveis) ficam no Zustand, chave `sabli-ui`. Tokens **não** entram aí.
@@ -22,7 +22,7 @@ Slogan: **Seu negócio inteiro. Em um só lugar.**
 
 ## O que esta versão não é
 
-Não há pagamento de adquirente, fiscal, delivery, reservas completas nem sincronização instantânea de KDS. No modo API, catálogo, mesas, PDV, pedidos e cozinha já consomem o backend. Comandas, caixa, relatórios e equipe ainda avisam que o módulo não está disponível. Encerrar atendimento real permanece oculto até Billing e Caixa. Esconder um módulo em Configurações só altera a navegação da demonstração.
+Não há pagamento de adquirente, fiscal, delivery, reservas completas nem sincronização instantânea de KDS. No modo API, catálogo, mesas, PDV, pedidos, cozinha, comandas e caixa já consomem o backend. Relatórios e equipe ainda avisam que o módulo não está disponível. PIX e cartão são declaração manual. Esconder um módulo em Configurações só altera a navegação da demonstração.
 
 ## Onde o código vive
 
@@ -41,14 +41,14 @@ Componentes visuais não importam fixtures e não chamam `fetch`. Dados reais pa
 | `/entrar` | Nova | Login real no modo API. No DEMO redireciona ao início. |
 | `/selecionar-estabelecimento` | Nova | Lista orgs/lojas de `/me` e valida `POST /me/context`. |
 | `/inicio` | Fundação | DEMO: indicadores de exemplo. API: contexto autorizado, sem fixtures. |
-| `/mesas` | Fundação | DEMO operacional. API: mapa, abertura, conta e reabertura reais. |
+| `/mesas` | Fundação | DEMO operacional. API: mapa, abertura, conta, quitação e encerramento reais. |
 | `/pedidos` | Polida | DEMO operacional. API: lista persistida, detalhe e produção. |
 | `/pdv` | Fundação | DEMO operacional. API: rascunho volátil e confirmação no servidor. |
 | `/pdv/montar-pizza` | Fundação | DEMO operacional. API: cotação do servidor e inclusão no rascunho. |
-| `/comandas` | Polida | DEMO operacional. API: não ligado. |
+| `/comandas` | Polida | DEMO operacional. API: contas, pagamentos e saldo reais. |
 | `/produtos` | Polida | DEMO operacional. API: catálogo real, busca, filtros, CRUD e pizza. |
 | `/cozinha` | Polida | DEMO operacional. API: fila persistida, avanço com versão. |
-| `/caixa` | Fundação | DEMO operacional. API: não ligado. |
+| `/caixa` | Fundação | DEMO operacional. API: sessão, movimentos e quitação reais. |
 | `/relatorios` | Fundação | DEMO ilustrativo. API: não ligado. |
 | `/equipe` | Fundação | DEMO local. API: não ligado. |
 | `/configuracoes` | Fundação | DEMO: módulos visíveis. API: só aparência. |
@@ -84,7 +84,7 @@ Estabelecimento de exemplo no DEMO: Pizzaria do Centro. Operadora: Mariana Alves
 
 ## Git e entrega
 
-Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11. Caixa na PR #12. Autenticação React na #13. Catálogo React na #14. Mesas React na #15. Pedidos/KDS React segue empilhada em `feat/orders-api` sobre a #15.
+Frontend integrado na `main` pelo merge da PR #6 (`20c74eb`). A fundação da API está na PR #7. Identidade na PR #8. Catálogo na PR #9. Mesas na PR #10. Pedidos na PR #11. Caixa na PR #12. Autenticação React na #13. Catálogo React na #14. Mesas React na #15. Pedidos/KDS React segue empilhada em `feat/orders-api` (PR #16). Billing/caixa React segue em `feat/billing-api` sobre a #16.
 
 ## Como rodar
 
@@ -112,7 +112,7 @@ No PowerShell: `$env:VITE_SABLI_MODE='api'; npm run dev` com a API no ar.
 
 ## Como continuar
 
-O próximo passo comercial é ligar Billing e Caixa (Checkpoint 2.1E). Não iniciar isso automaticamente.
+O próximo passo comercial é o Checkpoint 2.1F. Não iniciar isso automaticamente.
 
 ## Referência visual
 
